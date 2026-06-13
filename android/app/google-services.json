@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "844405449224",
+    "project_id": "smart-spend-ai-db",
+    "storage_bucket": "smart-spend-ai-db.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:844405449224:android:5e4d94032b1f4ea55ba7bd",
+        "android_client_info": {
+          "package_name": "com.example.smart_spend_ai"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAv--h6r7T-MDt6KAZnmb8-H_zFfh3OVTs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
