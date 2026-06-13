@@ -1,0 +1,25 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "smart-spend-ai-db",
+          "appId": "1:844405449224:android:5e4d94032b1f4ea55ba7bd",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "smart-spend-ai-db",
+          "configurations": {
+            "android": "1:844405449224:android:5e4d94032b1f4ea55ba7bd",
+            "web": "1:844405449224:web:daf7787d77e3a6cf5ba7bd"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "indexes": "firestore.indexes.json"
+  }
+}
