@@ -47,6 +47,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       body: SafeArea(
         child: Column(
           children: [
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.xl),
+              child: Image.asset(
+                'assets/images/logo.png',
+                height: 60,
+                fit: BoxFit.contain,
+              ),
+            ),
             Expanded(
               child: PageView(
                 controller: _pageController,

@@ -10,258 +10,191 @@ class FinancialSnapshotCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final userProfileAsync = ref.watch(userProfileProvider);
-    final expensesAsync = ref.watch(expensesProvider);
-    final goalsAsync = ref.watch(goalsProvider);
     final availableBalance = ref.watch(availableBalanceProvider);
+    final currentMonthReceived = ref.watch(currentMonthReceivedProvider);
+    final currentMonthExpenses = ref.watch(currentMonthExpensesProvider);
 
-    final now = DateTime.now();
     final currencyFormatter = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
-
-    final profile = userProfileAsync.valueOrNull;
-    final monthlyIncome = profile?.monthlyIncome ?? 0.0;
-
-    final expenses = expensesAsync.valueOrNull ?? [];
-    final totalExpenses = expenses
-        .where((e) => e.date.month == now.month && e.date.year == now.year)
-        .fold(0.0, (sum, e) => sum + e.amount);
-
-    final netCashFlow = monthlyIncome - totalExpenses;
-    final savingsThisMonth = netCashFlow > 0 ? netCashFlow : 0.0;
-
-    final goals = goalsAsync.valueOrNull ?? [];
-    final activeGoalsCount = goals.where((g) => g.currentAmount < g.targetAmount).length;
-
-    // Build real insights
-    List<Widget> insightWidgets = [];
-    
-    if (savingsThisMonth > 0) {
-      insightWidgets.add(_buildInsightRow(
-        context, 
-        Icons.check_circle_outline, 
-        AppColors.positive, 
-        "Saved ${currencyFormatter.format(savingsThisMonth)} this month"
-      ));
-    } else if (totalExpenses > monthlyIncome && monthlyIncome > 0) {
-      insightWidgets.add(_buildInsightRow(
-        context, 
-        Icons.warning_amber_rounded, 
-        AppColors.negative, 
-        "Expenses exceeded income by ${currencyFormatter.format(totalExpenses - monthlyIncome)}"
-      ));
-    }
-
-    if (monthlyIncome > 0 && totalExpenses > 0) {
-      final expensePercent = ((totalExpenses / monthlyIncome) * 100).toInt();
-      insightWidgets.add(_buildInsightRow(
-        context, 
-        Icons.pie_chart_outline, 
-        AppColors.accentAI, 
-        "Expenses are $expensePercent% of monthly income"
-      ));
-    }
-
-    if (activeGoalsCount > 0) {
-      insightWidgets.add(_buildInsightRow(
-        context, 
-        Icons.flag_outlined, 
-        Colors.blue, 
-        "$activeGoalsCount active savings ${activeGoalsCount == 1 ? 'goal' : 'goals'}"
-      ));
-    }
-
-    if (insightWidgets.isEmpty) {
-      insightWidgets.add(_buildInsightRow(
-        context,
-        Icons.info_outline,
-        AppColors.textSecondary,
-        "Start adding expenses and income to see insights."
-      ));
-    }
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.surfaceHighlight, // Dark glassmorphism
-          borderRadius: BorderRadius.circular(24),
+          color: AppColors.surfaceHighlight,
+          borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
           border: Border.all(
-            color: AppColors.accentAI.withValues(alpha: 0.4), // Purple accent glow
+            color: AppColors.border.withValues(alpha: 0.5),
             width: 1,
-          ),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              AppColors.surfaceHighlight.withValues(alpha: 0.9),
-              AppColors.surface.withValues(alpha: 0.95),
-            ],
           ),
           boxShadow: [
             BoxShadow(
-              color: AppColors.accentAI.withValues(alpha: 0.1), // Premium shadow
+              color: Colors.black.withValues(alpha: 0.2),
               blurRadius: 20,
-              offset: const Offset(0, 8),
+              offset: const Offset(0, 10),
             ),
           ],
         ),
-        padding: const EdgeInsets.all(AppSpacing.xl),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.xl,
+          vertical: AppSpacing.xxl,
+        ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // SECTION TITLE
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.accentAI.withValues(alpha: 0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.account_balance_wallet, color: AppColors.accentAI, size: 20),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Financial Overview',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Text(
-                      'Your money at a glance',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.accentAI.withValues(alpha: 0.8),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: AppSpacing.xxl),
-
-            // MAIN METRIC
-            Center(
-              child: Column(
-                children: [
-                  Text(
-                    'Available Balance',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(
-                    currencyFormatter.format(availableBalance),
-                    style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      letterSpacing: -1,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            
-            const SizedBox(height: AppSpacing.xxl),
-
-            // METRICS GRID
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                color: Colors.black12,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      Expanded(child: _buildSecondaryMetric(context, 'Income', currencyFormatter.format(monthlyIncome))),
-                      Container(width: 1, height: 40, color: AppColors.border),
-                      Expanded(child: _buildSecondaryMetric(context, 'Expenses', currencyFormatter.format(totalExpenses))),
-                    ],
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
-                    child: Divider(color: AppColors.border, height: 1),
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      Expanded(child: _buildSecondaryMetric(context, 'Savings', currencyFormatter.format(savingsThisMonth))),
-                      Container(width: 1, height: 40, color: AppColors.border),
-                      Expanded(child: _buildSecondaryMetric(context, 'Active Goals', '$activeGoalsCount')),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: AppSpacing.xxl),
-            
-            // INSIGHTS SECTION
+            // Available Balance — hero metric
             Text(
-              'Insights',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
+              'Available Balance',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.5,
               ),
             ),
-            const SizedBox(height: AppSpacing.md),
-            ...insightWidgets,
+            const SizedBox(height: AppSpacing.sm),
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 300),
+              style: Theme.of(context).textTheme.displaySmall!.copyWith(
+                fontWeight: FontWeight.w700,
+                color: availableBalance < 0 ? const Color(0xFFFF6B6B) : Colors.white,
+                letterSpacing: -1.5,
+              ),
+              child: Text(
+                currencyFormatter.format(availableBalance),
+              ),
+            ),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              transitionBuilder: (child, animation) => FadeTransition(
+                opacity: animation,
+                child: SizeTransition(
+                  sizeFactor: animation,
+                  child: child,
+                ),
+              ),
+              child: availableBalance < 0
+                  ? Padding(
+                      padding: const EdgeInsets.only(top: AppSpacing.sm),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF6B6B).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.warning_rounded, color: Color(0xFFFF6B6B), size: 14),
+                            SizedBox(width: 6),
+                            Text(
+                              'Overspent',
+                              style: TextStyle(
+                                color: Color(0xFFFF6B6B),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : const SizedBox.shrink(key: ValueKey('positive')),
+            ),
+
+            const SizedBox(height: AppSpacing.xl),
+
+            // Income | Expenses
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: AppSpacing.md,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.surface.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+              ),
+              child: Row(
+                children: [
+                  // Income
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: AppColors.positive,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Received',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          currencyFormatter.format(currentMonthReceived),
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    width: 1,
+                    height: 36,
+                    color: AppColors.border,
+                  ),
+                  // Expenses
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: AppColors.negative,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Expenses',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          currencyFormatter.format(currentMonthExpenses),
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildSecondaryMetric(BuildContext context, String label, String value) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: AppColors.textSecondary,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildInsightRow(BuildContext context, IconData icon, Color color, String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: color, size: 18),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Text(
-              text,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.white.withValues(alpha: 0.85),
-                height: 1.3,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 
@@ -54,7 +55,7 @@ class AiCoachHeroCard extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.md),
             Text(
-              "You spent ₹840 less than last week. Your dining out expenses dropped by 12%. Keep this up, and you'll hit your laptop savings target 4 days early.",
+              "Your personal AI financial assistant. Ask me anything about your spending, investments, or goals to get personalized insights.",
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                 color: Colors.white.withValues(alpha: 0.85),
                 fontWeight: FontWeight.w400,
@@ -65,20 +66,24 @@ class AiCoachHeroCard extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: AppSpacing.lg,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      'Ask AI Coach',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppColors.accentAI,
-                        fontWeight: FontWeight.w600,
+                  child: GestureDetector(
+                    onTap: () => context.go('/ai_coach'),
+                    behavior: HitTestBehavior.opaque,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: AppSpacing.lg,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        'Ask AI Coach',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: AppColors.accentAI,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ),

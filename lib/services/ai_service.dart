@@ -61,7 +61,7 @@ class AiService {
       final apiKey = dotenv.env['GEMINI_API_KEY'];
       if (apiKey != null && apiKey.isNotEmpty) {
         _model = GenerativeModel(
-          model: 'gemini-2.5-flash',
+          model: 'gemini-1.5-flash',
           apiKey: apiKey,
         );
       }
@@ -164,6 +164,9 @@ $userPrompt
       return "Connection timeout. Try again.";
     } catch (e) {
       debugPrint("AI Request Error: $e");
+      if (kDebugMode) {
+        return "Gemini API Error:\n$e";
+      }
       return "AI is currently unavailable. Please try again later.";
     }
   }
@@ -218,7 +221,11 @@ $context
       yield "Connection timeout. Try again.";
     } catch (e) {
       debugPrint("AI Stream Error: $e");
-      yield "AI is currently unavailable.";
+      if (kDebugMode) {
+        yield "Gemini API Error:\n$e";
+      } else {
+        yield "AI is currently unavailable.";
+      }
     }
   }
 }

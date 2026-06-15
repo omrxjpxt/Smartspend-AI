@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/goal.dart';
+import '../../domain/entities/goal_contribution.dart';
 import 'auth_repository.dart';
 
 final goalsRepositoryProvider = Provider((ref) {
@@ -27,8 +28,6 @@ class GoalsRepository {
           emoji: data['emoji'] ?? '🎯',
           currentAmount: (data['currentAmount'] ?? 0).toDouble(),
           targetAmount: (data['targetAmount'] ?? 0).toDouble(),
-          monthlyContribution: (data['monthlyContribution'] ?? 0).toDouble(),
-          estimatedCompletion: (data['estimatedCompletion'] as Timestamp?)?.toDate() ?? DateTime.now(),
         );
       }).toList();
     });
@@ -40,8 +39,6 @@ class GoalsRepository {
       'emoji': goal.emoji,
       'currentAmount': goal.currentAmount,
       'targetAmount': goal.targetAmount,
-      'monthlyContribution': goal.monthlyContribution,
-      'estimatedCompletion': Timestamp.fromDate(goal.estimatedCompletion),
       'createdAt': FieldValue.serverTimestamp(),
     });
   }
@@ -52,12 +49,53 @@ class GoalsRepository {
       'emoji': goal.emoji,
       'currentAmount': goal.currentAmount,
       'targetAmount': goal.targetAmount,
-      'monthlyContribution': goal.monthlyContribution,
-      'estimatedCompletion': Timestamp.fromDate(goal.estimatedCompletion),
     });
   }
 
   Future<void> deleteGoal(String id) async {
     await _goalsRef.doc(id).delete();
+  }
+
+  Stream<List<GoalContribution>> watchGoalContributions(String goalId) {
+    return _goalsRef
+        .doc(goalId)
+        .collection('contributions')
+        .orderBy('date', descending: true)
+        .limit(5)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        return GoalContribution(
+          id: doc.id,
+          goalId: goalId,
+          amount: (data['amount'] ?? 0).toDouble(),
+          date: (data['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
+        );
+      }).toList();
+    });
+  }
+
+  Future<void> addContribution({
+    required String goalId,
+    required double currentSavedAmount,
+    required double contributionAmount,
+  }) async {
+    final batch = _firestore.batch();
+    
+    // 1. Add contribution record
+    final contributionRef = _goalsRef.doc(goalId).collection('contributions').doc();
+    batch.set(contributionRef, {
+      'amount': contributionAmount,
+      'date': FieldValue.serverTimestamp(),
+    });
+
+    // 2. Update parent goal's current amount
+    final goalDocRef = _goalsRef.doc(goalId);
+    batch.update(goalDocRef, {
+      'currentAmount': currentSavedAmount + contributionAmount,
+    });
+
+    await batch.commit();
   }
 }

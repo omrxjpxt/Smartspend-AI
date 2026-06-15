@@ -8,13 +8,17 @@ import '../../presentation/expenses/expenses_screen.dart';
 import '../../presentation/goals/goals_screen.dart';
 import '../../presentation/investments/investments_screen.dart';
 import '../../presentation/ai_coach/ai_coach_screen.dart';
+import '../../presentation/ai_coach/chat_session_screen.dart';
+import '../../presentation/ai_coach/chat_history_screen.dart';
 import '../../presentation/design_system/components/bottom_nav_scaffold.dart';
 
+import '../../presentation/splash/splash_screen.dart';
 import '../../presentation/onboarding/onboarding_screen.dart';
 import '../../presentation/accounts/account_dashboard_screen.dart';
 import '../../presentation/notifications/notification_center_screen.dart';
 import '../../presentation/profile/profile_screen.dart';
 import '../../presentation/transactions/transaction_history_screen.dart';
+import '../../presentation/expenses/expenses_history_screen.dart';
 
 import '../../data/repositories/auth_repository.dart';
 import '../../presentation/auth/login_screen.dart';
@@ -37,9 +41,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: '/home',
+    initialLocation: '/splash',
     refreshListenable: notifier,
     redirect: (context, state) {
+      final isSplash = state.uri.toString() == '/splash';
+      if (isSplash) return null;
+
       final authState = ref.read(authStateProvider);
       final userProfileAsync = ref.read(userProfileProvider);
 
@@ -100,6 +107,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(
+        path: '/splash',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const SplashScreen(),
+      ),
+      GoRoute(
         path: '/login',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const LoginScreen(),
@@ -132,7 +144,33 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/transactions',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const TransactionHistoryScreen(),
+        builder: (context, state) {
+          final filter = state.uri.queryParameters['filter'] ?? 'All';
+          return TransactionHistoryScreen(initialFilter: filter);
+        },
+      ),
+      GoRoute(
+        path: '/expenses/history',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const ExpensesHistoryScreen(),
+      ),
+      GoRoute(
+        path: '/ai_coach/session',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const ChatSessionScreen(),
+      ),
+      GoRoute(
+        path: '/ai_coach/session/:id',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return ChatSessionScreen(conversationId: id);
+        },
+      ),
+      GoRoute(
+        path: '/ai_coach/history',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const ChatHistoryScreen(),
       ),
       ShellRoute(
         navigatorKey: _shellNavigatorKey,

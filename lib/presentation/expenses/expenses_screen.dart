@@ -3,7 +3,6 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import 'widgets/spending_insights_card.dart';
 import 'widgets/expenses_trend_chart.dart';
-import 'widgets/category_breakdown.dart';
 import 'widgets/transaction_history.dart';
 import 'widgets/add_expense_modal.dart';
 
@@ -24,8 +23,6 @@ class ExpensesScreen extends StatelessWidget {
               SpendingInsightsCard(),
               SizedBox(height: AppSpacing.xxl),
               ExpensesTrendChart(),
-              SizedBox(height: AppSpacing.xxl),
-              CategoryBreakdown(),
               SizedBox(height: AppSpacing.xxl),
               TransactionHistory(),
             ],

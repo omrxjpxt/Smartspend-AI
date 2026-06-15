@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../domain/entities/goal_contribution.dart';
 import '../../domain/entities/expense.dart';
 import '../../domain/entities/investment.dart';
 import '../../domain/entities/investment_transaction.dart';
@@ -14,6 +15,7 @@ import '../../data/repositories/notifications_repository.dart';
 import '../../data/repositories/user_profile_repository.dart';
 import '../../domain/entities/balance_transaction.dart';
 import '../../domain/entities/app_notification.dart';
+import '../../data/repositories/transactions_repository.dart';
 
 // 1. Expenses Provider (Firebase Stream)
 final expensesProvider = StreamProvider<List<Expense>>((ref) {
@@ -43,10 +45,21 @@ final accountsProvider = StateProvider<List<Account>>((ref) {
   ];
 });
 
-// 5. Goals Provider (Firebase Stream)
+// ----- Goals & Budgets -----
+
 final goalsProvider = StreamProvider<List<Goal>>((ref) {
   final repository = ref.watch(goalsRepositoryProvider);
   return repository.watchGoals();
+});
+
+final totalGoalSavingsProvider = Provider<double>((ref) {
+  final goals = ref.watch(goalsProvider).valueOrNull ?? [];
+  return goals.fold(0.0, (sum, goal) => sum + goal.currentAmount);
+});
+
+final goalContributionsProvider = StreamProvider.family<List<GoalContribution>, String>((ref, goalId) {
+  final repository = ref.watch(goalsRepositoryProvider);
+  return repository.watchGoalContributions(goalId);
 });
 
 // 6. User Profile Provider (Firebase Stream)
@@ -61,15 +74,41 @@ final balanceTransactionsProvider = StreamProvider<List<BalanceTransaction>>((re
   return repository.watchBalanceTransactions();
 });
 
-// 8. Available Balance Computed Provider
+// 8. Available Balance Computed Provider (Historical Received - Historical Expenses)
 final availableBalanceProvider = Provider<double>((ref) {
-  final transactions = ref.watch(balanceTransactionsProvider).valueOrNull ?? [];
+  final transactions = ref.watch(allTransactionsProvider).valueOrNull ?? [];
   return transactions.fold(0.0, (sum, tx) {
-    if (tx.type == 'add' || tx.type == 'adjustment') {
+    if (tx.type == 'Income' || tx.type == 'Received') return sum + tx.amount;
+    if (tx.type == 'Expense') return sum - tx.amount;
+    return sum; // Ignore Investments or Goal Contributions in raw available balance unless they act as expenses
+  });
+});
+
+// 8.1 Current Month Received Provider
+final currentMonthReceivedProvider = Provider<double>((ref) {
+  final transactions = ref.watch(allTransactionsProvider).valueOrNull ?? [];
+  final now = DateTime.now();
+  return transactions.fold(0.0, (sum, tx) {
+    if ((tx.type == 'Income' || tx.type == 'Received') && 
+        tx.createdAt.month == now.month && 
+        tx.createdAt.year == now.year) {
       return sum + tx.amount;
-    } else {
-      return sum - tx.amount;
     }
+    return sum;
+  });
+});
+
+// 8.2 Current Month Expenses Provider
+final currentMonthExpensesProvider = Provider<double>((ref) {
+  final transactions = ref.watch(allTransactionsProvider).valueOrNull ?? [];
+  final now = DateTime.now();
+  return transactions.fold(0.0, (sum, tx) {
+    if (tx.type == 'Expense' && 
+        tx.createdAt.month == now.month && 
+        tx.createdAt.year == now.year) {
+      return sum + tx.amount;
+    }
+    return sum;
   });
 });
 

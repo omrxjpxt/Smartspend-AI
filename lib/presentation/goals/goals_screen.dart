@@ -7,8 +7,8 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/utils/error_handler.dart';
 import 'widgets/goals_overview_card.dart';
 import 'widgets/goal_card.dart';
-import 'widgets/goal_progress_analytics_widget.dart';
 import 'widgets/create_goal_modal.dart';
+import 'widgets/goal_details_modal.dart';
 
 class GoalsScreen extends ConsumerWidget {
   const GoalsScreen({super.key});
@@ -51,22 +51,28 @@ class GoalsScreen extends ConsumerWidget {
                       )
                     ];
                   }
-                  return goalsList.map((goal) => GoalCard(
-                    title: goal.title,
-                    emoji: goal.emoji,
-                    currentAmount: currencyFormatter.format(goal.currentAmount),
-                    targetAmount: currencyFormatter.format(goal.targetAmount),
-                    progress: goal.progress,
-                    completionPercentage: goal.completionPercentage,
-                    monthlyContribution: '${currencyFormatter.format(goal.monthlyContribution)}/mo',
-                    estimatedCompletion: dateFormatter.format(goal.estimatedCompletion),
-                  )).toList();
+                  return goalsList.map((goal) {
+                    return GoalCard(
+                      title: goal.title,
+                      emoji: goal.emoji,
+                      currentAmount: currencyFormatter.format(goal.currentAmount),
+                      targetAmount: currencyFormatter.format(goal.targetAmount),
+                      progress: goal.progress,
+                      completionPercentage: goal.completionPercentage,
+                      onTap: () {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (context) => GoalDetailsModal(goal: goal),
+                        );
+                      },
+                    );
+                  }).toList();
                 },
                 loading: () => [const Center(child: CircularProgressIndicator())],
                 error: (error, stack) => [Center(child: AppErrorWidget(error: error))],
               ),
-              const SizedBox(height: AppSpacing.xl),
-              const GoalProgressAnalyticsWidget(),
               const SizedBox(height: 100),
             ],
           ),

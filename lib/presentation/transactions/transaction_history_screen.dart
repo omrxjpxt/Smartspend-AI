@@ -12,9 +12,11 @@ import '../../domain/entities/app_transaction.dart';
 import '../../services/ai_service.dart';
 import '../../services/financial_context_builder.dart';
 import '../../core/constants/ai_prompts.dart';
+import '../home/widgets/transaction_details_modal.dart';
 
 class TransactionHistoryScreen extends ConsumerStatefulWidget {
-  const TransactionHistoryScreen({super.key});
+  final String initialFilter;
+  const TransactionHistoryScreen({super.key, this.initialFilter = 'All'});
 
   @override
   ConsumerState<TransactionHistoryScreen> createState() => _TransactionHistoryScreenState();
@@ -22,6 +24,7 @@ class TransactionHistoryScreen extends ConsumerStatefulWidget {
 
 class _TransactionHistoryScreenState extends ConsumerState<TransactionHistoryScreen> {
   late DateTime _selectedMonth;
+  late String _currentFilter;
   final currencyFormatter = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
   bool _isGeneratingPdf = false;
 
@@ -29,6 +32,7 @@ class _TransactionHistoryScreenState extends ConsumerState<TransactionHistoryScr
   void initState() {
     super.initState();
     _selectedMonth = DateTime.now();
+    _currentFilter = widget.initialFilter;
   }
 
   void _previousMonth() {
@@ -138,7 +142,7 @@ Under each header, provide exactly 2-3 concise bullet points analyzing my financ
         children: [
           // Month Selector
           Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -159,6 +163,21 @@ Under each header, provide exactly 2-3 concise bullet points analyzing my financ
               ],
             ),
           ),
+
+          // Filters
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+            child: Row(
+              children: [
+                _buildFilterChip('All'),
+                const SizedBox(width: AppSpacing.sm),
+                _buildFilterChip('Received'),
+                const SizedBox(width: AppSpacing.sm),
+                _buildFilterChip('Expenses'),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
 
           Expanded(
             child: StreamBuilder(
@@ -202,7 +221,17 @@ Under each header, provide exactly 2-3 concise bullet points analyzing my financ
                   );
                 }
 
-                final transactions = snapshot.data ?? [];
+                var transactions = snapshot.data ?? [];
+
+                // Filter
+                if (_currentFilter == 'Received') {
+                  transactions = transactions.where((tx) => tx.type == 'Income' || tx.type == 'Received' || tx.type == 'Balance Added').toList();
+                } else if (_currentFilter == 'Expenses') {
+                  transactions = transactions.where((tx) => tx.type == 'Expense').toList();
+                }
+
+                // Guarantee sort order Newest First
+                transactions.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
                 if (transactions.isEmpty) {
                   return Center(
@@ -228,27 +257,36 @@ Under each header, provide exactly 2-3 concise bullet points analyzing my financ
                     
                     IconData icon;
                     Color color;
+                    String prefix = '';
+                    String displaySubtitle = tx.category ?? tx.type;
 
                     switch (tx.type) {
                       case 'Expense':
                         icon = Icons.receipt_long;
                         color = AppColors.negative;
+                        prefix = '-';
                         break;
                       case 'Income':
+                      case 'Received':
                         icon = Icons.arrow_downward;
                         color = AppColors.positive;
+                        prefix = '+';
+                        displaySubtitle = tx.category ?? 'Received';
                         break;
                       case 'Balance Added':
                         icon = Icons.account_balance_wallet;
                         color = AppColors.positive;
+                        prefix = '+';
                         break;
                       case 'Investment':
                         icon = Icons.trending_up;
                         color = AppColors.accentAI;
+                        prefix = '-';
                         break;
                       case 'Goal Contribution':
                         icon = Icons.flag;
                         color = Colors.blue;
+                        prefix = '-';
                         break;
                       default:
                         icon = Icons.history;
@@ -256,61 +294,71 @@ Under each header, provide exactly 2-3 concise bullet points analyzing my financ
                     }
 
                     final timeFormat = DateFormat('d MMM yyyy • h:mm a').format(tx.createdAt);
-                    final subtitle = tx.category ?? tx.type;
 
                     return Padding(
                       padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                      child: PremiumCard(
-                        padding: const EdgeInsets.all(AppSpacing.md),
-                        backgroundColor: AppColors.surfaceHighlight,
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: color.withValues(alpha: 0.15),
-                                shape: BoxShape.circle,
+                      child: GestureDetector(
+                        onTap: () {
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            backgroundColor: Colors.transparent,
+                            builder: (context) => TransactionDetailsModal(transaction: tx),
+                          );
+                        },
+                        behavior: HitTestBehavior.opaque,
+                        child: PremiumCard(
+                          padding: const EdgeInsets.all(AppSpacing.md),
+                          backgroundColor: AppColors.surfaceHighlight,
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: color.withValues(alpha: 0.15),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(icon, color: color, size: 24),
                               ),
-                              child: Icon(icon, color: color, size: 24),
-                            ),
-                            const SizedBox(width: AppSpacing.md),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    tx.title,
-                                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.w600,
+                              const SizedBox(width: AppSpacing.md),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      tx.title,
+                                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    subtitle,
-                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      color: AppColors.textSecondary,
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      displaySubtitle,
+                                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                        color: AppColors.textSecondary,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    timeFormat,
-                                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                      color: AppColors.textSecondary.withValues(alpha: 0.5),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      timeFormat,
+                                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                        color: AppColors.textSecondary.withValues(alpha: 0.5),
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                            Text(
-                              currencyFormatter.format(tx.amount),
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                color: color,
-                                fontWeight: FontWeight.bold,
+                              Text(
+                                '$prefix${currencyFormatter.format(tx.amount)}',
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: color,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     );
@@ -320,6 +368,30 @@ Under each header, provide exactly 2-3 concise bullet points analyzing my financ
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String label) {
+    final isSelected = _currentFilter == label;
+    return GestureDetector(
+      onTap: () => setState(() => _currentFilter = label),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.accentAI : AppColors.surfaceHighlight,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? AppColors.accentAI : AppColors.border.withValues(alpha: 0.5),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : AppColors.textSecondary,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
       ),
     );
   }

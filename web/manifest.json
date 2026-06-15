@@ -1,6 +1,6 @@
 {
-    "name": "smart_spend_ai",
-    "short_name": "smart_spend_ai",
+    "name": "SmartSpend AI",
+    "short_name": "SmartSpend AI",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#000000",

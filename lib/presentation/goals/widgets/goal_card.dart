@@ -10,8 +10,8 @@ class GoalCard extends StatelessWidget {
   final String targetAmount;
   final double progress;
   final String completionPercentage;
-  final String monthlyContribution;
-  final String estimatedCompletion;
+  final VoidCallback? onTap;
+  final VoidCallback? onAddContribution;
 
   const GoalCard({
     super.key,
@@ -21,8 +21,8 @@ class GoalCard extends StatelessWidget {
     required this.targetAmount,
     required this.progress,
     required this.completionPercentage,
-    required this.monthlyContribution,
-    required this.estimatedCompletion,
+    this.onTap,
+    this.onAddContribution,
   });
 
   @override
@@ -33,8 +33,11 @@ class GoalCard extends StatelessWidget {
         right: AppSpacing.lg,
         bottom: AppSpacing.lg,
       ),
-      child: PremiumCard(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: PremiumCard(
+          padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -107,39 +110,22 @@ class GoalCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceHighlight,
-                borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.calendar_today, size: 16, color: AppColors.textSecondary),
-                      const SizedBox(width: AppSpacing.sm),
-                      Text(
-                        estimatedCompletion,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      const Icon(Icons.payments_outlined, size: 16, color: AppColors.textSecondary),
-                      const SizedBox(width: AppSpacing.sm),
-                      Text(
-                        monthlyContribution,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
-                      ),
-                    ],
-                  ),
-                ],
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: onAddContribution,
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Add Contribution'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.accentAI,
+                  side: BorderSide(color: AppColors.accentAI.withValues(alpha: 0.3)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
               ),
             ),
           ],
+        ),
         ),
       ),
     );

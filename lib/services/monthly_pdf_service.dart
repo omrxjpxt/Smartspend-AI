@@ -36,7 +36,8 @@ class MonthlyPdfService {
     );
 
     final monthString = DateFormat('MMMM yyyy').format(monthDate);
-    final filename = 'SmartSpend_Statement_${DateFormat('MMMM_yyyy').format(monthDate)}.pdf';
+    final filename =
+        'SmartSpend_Statement_${DateFormat('MMMM_yyyy').format(monthDate)}.pdf';
 
     debugPrint('--- PDF EXPORT LOG ---');
     debugPrint('Transactions included: ${transactions.length}');
@@ -81,10 +82,13 @@ class MonthlyPdfService {
       bold: fontBold,
     );
 
-    final currencyFormatter = NumberFormat.currency(locale: 'en_IN', symbol: 'Rs. ', decimalDigits: 0);
+    final currencyFormatter = NumberFormat.currency(
+        locale: 'en_IN', symbol: 'Rs. ', decimalDigits: 0);
     final monthString = DateFormat('MMMM yyyy').format(monthDate);
-    final generatedDate = DateFormat('d MMM yyyy • h:mm a').format(DateTime.now());
-    final statementId = 'STMT-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
+    final generatedDate =
+        DateFormat('d MMM yyyy • h:mm a').format(DateTime.now());
+    final statementId =
+        'STMT-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
 
     pw.MemoryImage? logoImage;
     try {
@@ -109,15 +113,17 @@ class MonthlyPdfService {
       savingsRate = ((totalIncome - totalExpenses) / totalIncome) * 100;
     }
 
-    final totalInvested = investments.fold(0.0, (sum, i) => sum + i.currentValue);
-    final activeGoals = goals.where((g) => g.currentAmount < g.targetAmount).length;
+    final totalInvested =
+        investments.fold(0.0, (sum, i) => sum + i.currentValue);
+    final activeGoals =
+        goals.where((g) => g.currentAmount < g.targetAmount).length;
 
     // AI Sanitization
     String? cleanAiSummary;
     if (aiSummary != null && aiSummary.isNotEmpty) {
       final lower = aiSummary.toLowerCase();
-      if (!lower.contains('timeout') && 
-          !lower.contains('unavailable') && 
+      if (!lower.contains('timeout') &&
+          !lower.contains('unavailable') &&
           !lower.contains('too many requests') &&
           !lower.contains('error')) {
         cleanAiSummary = aiSummary;
@@ -137,18 +143,29 @@ class MonthlyPdfService {
                 child: pw.Center(
                   child: pw.Transform.rotate(
                     angle: -math.pi / 4,
-                    child: pw.Text('CONFIDENTIAL', style: pw.TextStyle(fontSize: 60, color: PdfColors.grey200)),
+                    child: pw.Text('CONFIDENTIAL',
+                        style: const pw.TextStyle(
+                            fontSize: 60, color: PdfColors.grey200)),
                   ),
                 ),
               ),
               pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  _buildHeader(userName, userEmail, monthString, generatedDate, statementId, logoImage),
+                  _buildHeader(userName, userEmail, monthString, generatedDate,
+                      statementId, logoImage),
                   pw.SizedBox(height: 20),
-                  _buildExecutiveDashboard(totalIncome, totalExpenses, totalIncome - totalExpenses, savingsRate, totalInvested, activeGoals, currencyFormatter),
+                  _buildExecutiveDashboard(
+                      totalIncome,
+                      totalExpenses,
+                      totalIncome - totalExpenses,
+                      savingsRate,
+                      totalInvested,
+                      activeGoals,
+                      currencyFormatter),
                   pw.Spacer(),
-                  _buildFooter(context.pageNumber, context.pagesCount, statementId),
+                  _buildFooter(
+                      context.pageNumber, context.pagesCount, statementId),
                 ],
               ),
             ],
@@ -170,18 +187,23 @@ class MonthlyPdfService {
                 child: pw.Center(
                   child: pw.Transform.rotate(
                     angle: -math.pi / 4,
-                    child: pw.Text('CONFIDENTIAL', style: pw.TextStyle(fontSize: 60, color: PdfColors.grey200)),
+                    child: pw.Text('CONFIDENTIAL',
+                        style: const pw.TextStyle(
+                            fontSize: 60, color: PdfColors.grey200)),
                   ),
                 ),
               ),
               pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  _buildHeader(userName, userEmail, monthString, generatedDate, statementId, logoImage, hideDetails: true),
+                  _buildHeader(userName, userEmail, monthString, generatedDate,
+                      statementId, logoImage,
+                      hideDetails: true),
                   pw.SizedBox(height: 20),
                   _buildFinancialInsights(cleanAiSummary),
                   pw.Spacer(),
-                  _buildFooter(context.pageNumber, context.pagesCount, statementId),
+                  _buildFooter(
+                      context.pageNumber, context.pagesCount, statementId),
                 ],
               ),
             ],
@@ -196,8 +218,11 @@ class MonthlyPdfService {
         theme: theme,
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(32),
-        header: (context) => _buildHeader(userName, userEmail, monthString, generatedDate, statementId, logoImage, hideDetails: true),
-        footer: (context) => _buildFooter(context.pageNumber, context.pagesCount, statementId),
+        header: (context) => _buildHeader(userName, userEmail, monthString,
+            generatedDate, statementId, logoImage,
+            hideDetails: true),
+        footer: (context) =>
+            _buildFooter(context.pageNumber, context.pagesCount, statementId),
         build: (context) => [
           pw.SizedBox(height: 20),
           _buildGoalsSection(goals, currencyFormatter),
@@ -214,7 +239,9 @@ class MonthlyPdfService {
     return await pdf.save();
   }
 
-  pw.Widget _buildHeader(String name, String email, String period, String generated, String statementId, pw.MemoryImage? logo, {bool hideDetails = false}) {
+  pw.Widget _buildHeader(String name, String email, String period,
+      String generated, String statementId, pw.MemoryImage? logo,
+      {bool hideDetails = false}) {
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
@@ -231,9 +258,15 @@ class MonthlyPdfService {
                 pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Text('SmartSpend AI', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold, color: PdfColors.deepPurple900)),
+                    pw.Text('SmartSpend AI',
+                        style: pw.TextStyle(
+                            fontSize: 24,
+                            fontWeight: pw.FontWeight.bold,
+                            color: PdfColors.deepPurple900)),
                     pw.SizedBox(height: 2),
-                    pw.Text('Official Financial Statement', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
+                    pw.Text('Official Financial Statement',
+                        style: const pw.TextStyle(
+                            fontSize: 10, color: PdfColors.grey700)),
                   ],
                 ),
               ],
@@ -242,12 +275,22 @@ class MonthlyPdfService {
               pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.end,
                 children: [
-                  pw.Text(name, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12)),
-                  pw.Text(email, style: const pw.TextStyle(color: PdfColors.grey700, fontSize: 9)),
+                  pw.Text(name,
+                      style: pw.TextStyle(
+                          fontWeight: pw.FontWeight.bold, fontSize: 12)),
+                  pw.Text(email,
+                      style: const pw.TextStyle(
+                          color: PdfColors.grey700, fontSize: 9)),
                   pw.SizedBox(height: 6),
-                  pw.Text('Period: $period', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10)),
-                  pw.Text('ID: $statementId', style: const pw.TextStyle(color: PdfColors.grey600, fontSize: 8)),
-                  pw.Text('Generated: $generated', style: const pw.TextStyle(color: PdfColors.grey600, fontSize: 8)),
+                  pw.Text('Period: $period',
+                      style: pw.TextStyle(
+                          fontWeight: pw.FontWeight.bold, fontSize: 10)),
+                  pw.Text('ID: $statementId',
+                      style: const pw.TextStyle(
+                          color: PdfColors.grey600, fontSize: 8)),
+                  pw.Text('Generated: $generated',
+                      style: const pw.TextStyle(
+                          color: PdfColors.grey600, fontSize: 8)),
                 ],
               ),
           ],
@@ -258,7 +301,14 @@ class MonthlyPdfService {
     );
   }
 
-  pw.Widget _buildExecutiveDashboard(double income, double expenses, double savings, double savingsRate, double totalInvested, int activeGoals, NumberFormat fmt) {
+  pw.Widget _buildExecutiveDashboard(
+      double income,
+      double expenses,
+      double savings,
+      double savingsRate,
+      double totalInvested,
+      int activeGoals,
+      NumberFormat fmt) {
     String healthStatus = 'Needs Attention';
     PdfColor healthColor = PdfColors.red800;
     if (savingsRate > 20) {
@@ -269,103 +319,127 @@ class MonthlyPdfService {
       healthColor = PdfColors.orange800;
     }
 
-    return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.Text('EXECUTIVE DASHBOARD', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: PdfColors.black)),
-        pw.SizedBox(height: 10),
-        
-        // 6-CARD KPI GRID
-        pw.Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            _statCard('Total Income', fmt.format(income), PdfColors.green800),
-            _statCard('Total Expenses', fmt.format(expenses), PdfColors.red800),
-            _statCard('Net Savings', fmt.format(savings), PdfColors.blue800),
-            _statCard('Savings Rate', '${savingsRate.toStringAsFixed(1)}%', PdfColors.deepPurple800),
-            _statCard('Total Investments', fmt.format(totalInvested), PdfColors.indigo800),
-            _statCard('Active Goals', '$activeGoals', PdfColors.teal800),
-          ],
-        ),
+    return pw
+        .Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+      pw.Text('EXECUTIVE DASHBOARD',
+          style: pw.TextStyle(
+              fontSize: 16,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.black)),
+      pw.SizedBox(height: 10),
 
-        pw.SizedBox(height: 20),
-        
-        pw.Row(
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
-          children: [
-            pw.Expanded(
-              flex: 2,
-              child: pw.Container(
-                height: 180,
-                padding: const pw.EdgeInsets.all(12),
-                decoration: pw.BoxDecoration(
-                  color: PdfColors.grey100,
-                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
-                  border: pw.Border.all(color: PdfColors.grey300),
-                ),
-                child: pw.Column(
+      // 6-CARD KPI GRID
+      pw.Wrap(
+        spacing: 10,
+        runSpacing: 10,
+        children: [
+          _statCard('Total Income', fmt.format(income), PdfColors.green800),
+          _statCard('Total Expenses', fmt.format(expenses), PdfColors.red800),
+          _statCard('Net Savings', fmt.format(savings), PdfColors.blue800),
+          _statCard('Savings Rate', '${savingsRate.toStringAsFixed(1)}%',
+              PdfColors.deepPurple800),
+          _statCard('Total Investments', fmt.format(totalInvested),
+              PdfColors.indigo800),
+          _statCard('Active Goals', '$activeGoals', PdfColors.teal800),
+        ],
+      ),
+
+      pw.SizedBox(height: 20),
+
+      pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+        pw.Expanded(
+          flex: 2,
+          child: pw.Container(
+              height: 180,
+              padding: const pw.EdgeInsets.all(12),
+              decoration: pw.BoxDecoration(
+                color: PdfColors.grey100,
+                borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
+                border: pw.Border.all(color: PdfColors.grey300),
+              ),
+              child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Text('Income vs Expenses', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.deepPurple800)),
+                    pw.Text('Income vs Expenses',
+                        style: pw.TextStyle(
+                            fontSize: 12,
+                            fontWeight: pw.FontWeight.bold,
+                            color: PdfColors.deepPurple800)),
                     pw.SizedBox(height: 10),
                     pw.Expanded(
-                      child: pw.Chart(
-                        grid: pw.CartesianGrid(
-                          xAxis: pw.FixedAxis.fromStrings(const ['Income', 'Expenses'], ticks: true),
-                          yAxis: pw.FixedAxis(
-                            [0, math.max(income, expenses) / 2, math.max(income, expenses)],
-                            format: (v) => (v / 1000).toStringAsFixed(0) + 'k',
-                          ),
+                        child: pw.Chart(
+                      grid: pw.CartesianGrid(
+                        xAxis: pw.FixedAxis.fromStrings(
+                            const ['Income', 'Expenses'],
+                            ticks: true),
+                        yAxis: pw.FixedAxis(
+                          [
+                            0,
+                            math.max(income, expenses) / 2,
+                            math.max(income, expenses)
+                          ],
+                          format: (v) => '${(v / 1000).toStringAsFixed(0)}k',
                         ),
-                        datasets: [
-                          pw.BarDataSet(
-                            color: PdfColors.green600,
-                            width: 30,
-                            legend: 'Income',
-                            data: [pw.PointChartValue(0, income), pw.PointChartValue(1, 0)],
-                          ),
-                          pw.BarDataSet(
-                            color: PdfColors.red600,
-                            width: 30,
-                            legend: 'Expenses',
-                            data: [pw.PointChartValue(0, 0), pw.PointChartValue(1, expenses)],
-                          ),
-                        ],
-                      )
-                    )
-                  ]
-                )
+                      ),
+                      datasets: [
+                        pw.BarDataSet(
+                          color: PdfColors.green600,
+                          width: 30,
+                          legend: 'Income',
+                          data: [
+                            pw.PointChartValue(0, income),
+                            const pw.PointChartValue(1, 0)
+                          ],
+                        ),
+                        pw.BarDataSet(
+                          color: PdfColors.red600,
+                          width: 30,
+                          legend: 'Expenses',
+                          data: [
+                            const pw.PointChartValue(0, 0),
+                            pw.PointChartValue(1, expenses)
+                          ],
+                        ),
+                      ],
+                    ))
+                  ])),
+        ),
+        pw.SizedBox(width: 15),
+        pw.Expanded(
+          flex: 1,
+          child: pw.Container(
+              height: 180,
+              padding: const pw.EdgeInsets.all(16),
+              decoration: pw.BoxDecoration(
+                color: PdfColors.deepPurple50,
+                borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
+                border: pw.Border.all(color: PdfColors.deepPurple200),
               ),
-            ),
-            pw.SizedBox(width: 15),
-            pw.Expanded(
-              flex: 1,
-              child: pw.Container(
-                height: 180,
-                padding: const pw.EdgeInsets.all(16),
-                decoration: pw.BoxDecoration(
-                  color: PdfColors.deepPurple50,
-                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
-                  border: pw.Border.all(color: PdfColors.deepPurple200),
-                ),
-                child: pw.Column(
+              child: pw.Column(
                   mainAxisAlignment: pw.MainAxisAlignment.center,
                   crossAxisAlignment: pw.CrossAxisAlignment.center,
                   children: [
-                    pw.Text('Financial Health', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.deepPurple800)),
+                    pw.Text('Financial Health',
+                        style: pw.TextStyle(
+                            fontSize: 12,
+                            fontWeight: pw.FontWeight.bold,
+                            color: PdfColors.deepPurple800)),
                     pw.SizedBox(height: 16),
-                    pw.Text(healthStatus, style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold, color: healthColor)),
+                    pw.Text(healthStatus,
+                        style: pw.TextStyle(
+                            fontSize: 22,
+                            fontWeight: pw.FontWeight.bold,
+                            color: healthColor)),
                     pw.SizedBox(height: 16),
-                    pw.Text('Based on a savings rate of ${savingsRate.toStringAsFixed(1)}% this period.', textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
-                  ]
-                )
-              ),
-            )
-          ]
-        ),
-      ]
-    );
+                    pw.Text(
+                        'Based on a savings rate of ${savingsRate.toStringAsFixed(1)}% this period.',
+                        textAlign: pw.TextAlign.center,
+                        style: const pw.TextStyle(
+                            fontSize: 9, color: PdfColors.grey700)),
+                  ])),
+        )
+      ]),
+    ]);
   }
 
   pw.Widget _buildFinancialInsights(String? aiSummary) {
@@ -401,9 +475,15 @@ class MonthlyPdfService {
             child: pw.Row(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                pw.Text('• ', style: pw.TextStyle(fontSize: 12, color: PdfColors.deepPurple800)),
+                pw.Text('• ',
+                    style: const pw.TextStyle(
+                        fontSize: 12, color: PdfColors.deepPurple800)),
                 pw.Expanded(
-                  child: pw.Text(line.substring(2).trim(), style: const pw.TextStyle(fontSize: 10, lineSpacing: 1.5, color: PdfColors.grey900)),
+                  child: pw.Text(line.substring(2).trim(),
+                      style: const pw.TextStyle(
+                          fontSize: 10,
+                          lineSpacing: 1.5,
+                          color: PdfColors.grey900)),
                 ),
               ],
             ),
@@ -415,39 +495,46 @@ class MonthlyPdfService {
         widgets.add(
           pw.Padding(
             padding: const pw.EdgeInsets.only(top: 16, bottom: 8),
-            child: pw.Text(text.toUpperCase(), style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.deepPurple800)),
+            child: pw.Text(text.toUpperCase(),
+                style: pw.TextStyle(
+                    fontSize: 12,
+                    fontWeight: pw.FontWeight.bold,
+                    color: PdfColors.deepPurple800)),
           ),
         );
       }
     }
 
     return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.Text('FINANCIAL INSIGHTS', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: PdfColors.black)),
-        pw.SizedBox(height: 10),
-        ...widgets,
-      ]
-    );
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text('FINANCIAL INSIGHTS',
+              style: pw.TextStyle(
+                  fontSize: 16,
+                  fontWeight: pw.FontWeight.bold,
+                  color: PdfColors.black)),
+          pw.SizedBox(height: 10),
+          ...widgets,
+        ]);
   }
 
   pw.Widget _buildGoalsSection(List<Goal> goals, NumberFormat fmt) {
     if (goals.isEmpty) return pw.SizedBox();
 
-    return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.Text('ACTIVE GOALS PROGRESS', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColors.black)),
-        pw.SizedBox(height: 10),
-        ...goals.map((g) {
-          final remaining = g.targetAmount - g.currentAmount;
-          int monthsRemaining = 0;
-          if (g.monthlyContribution > 0 && remaining > 0) {
-            monthsRemaining = (remaining / g.monthlyContribution).ceil();
-          }
-          final progressPercent = (g.progress.clamp(0.0, 1.0) * 100).toStringAsFixed(0);
+    return pw
+        .Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+      pw.Text('ACTIVE GOALS PROGRESS',
+          style: pw.TextStyle(
+              fontSize: 14,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.black)),
+      pw.SizedBox(height: 10),
+      ...goals.map((g) {
+        final remaining = g.targetAmount - g.currentAmount;
+        final progressPercent =
+            (g.progress.clamp(0.0, 1.0) * 100).toStringAsFixed(0);
 
-          return pw.Container(
+        return pw.Container(
             margin: const pw.EdgeInsets.only(bottom: 10),
             padding: const pw.EdgeInsets.all(12),
             decoration: pw.BoxDecoration(
@@ -458,91 +545,119 @@ class MonthlyPdfService {
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
                 pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text('${g.emoji} ${g.title}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12)),
-                    pw.Text('$progressPercent% Completed', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.deepPurple600, fontSize: 10)),
-                  ]
-                ),
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text('${g.emoji} ${g.title}',
+                          style: pw.TextStyle(
+                              fontWeight: pw.FontWeight.bold, fontSize: 12)),
+                      pw.Text('$progressPercent% Completed',
+                          style: pw.TextStyle(
+                              fontWeight: pw.FontWeight.bold,
+                              color: PdfColors.deepPurple600,
+                              fontSize: 10)),
+                    ]),
                 pw.SizedBox(height: 6),
                 pw.Container(
-                  height: 6,
-                  width: double.infinity,
-                  decoration: const pw.BoxDecoration(color: PdfColors.grey200, borderRadius: pw.BorderRadius.all(pw.Radius.circular(3))),
-                  child: pw.Row(
-                    children: [
+                    height: 6,
+                    width: double.infinity,
+                    decoration: const pw.BoxDecoration(
+                        color: PdfColors.grey200,
+                        borderRadius:
+                            pw.BorderRadius.all(pw.Radius.circular(3))),
+                    child: pw.Row(children: [
                       pw.Container(
-                        width: 450 * g.progress.clamp(0.0, 1.0), // approx width mapping
+                        width: 450 *
+                            g.progress.clamp(0.0, 1.0), // approx width mapping
                         height: 6,
-                        decoration: const pw.BoxDecoration(color: PdfColors.deepPurple500, borderRadius: pw.BorderRadius.all(pw.Radius.circular(3))),
+                        decoration: const pw.BoxDecoration(
+                            color: PdfColors.deepPurple500,
+                            borderRadius:
+                                pw.BorderRadius.all(pw.Radius.circular(3))),
                       )
-                    ]
-                  )
-                ),
+                    ])),
                 pw.SizedBox(height: 6),
                 pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text('Saved: ${fmt.format(g.currentAmount)}', style: const pw.TextStyle(color: PdfColors.grey800, fontSize: 10)),
-                    pw.Text('Target: ${fmt.format(g.targetAmount)}', style: const pw.TextStyle(color: PdfColors.grey800, fontSize: 10)),
-                  ]
-                ),
-                pw.SizedBox(height: 4),
-                if (monthsRemaining > 0)
-                  pw.Text('At current savings rate, you will reach this goal in $monthsRemaining months.', style: pw.TextStyle(color: PdfColors.grey600, fontSize: 9, fontStyle: pw.FontStyle.italic)),
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text('Saved: ${fmt.format(g.currentAmount)}',
+                          style: const pw.TextStyle(
+                              color: PdfColors.grey800, fontSize: 10)),
+                      pw.Text('Target: ${fmt.format(g.targetAmount)}',
+                          style: const pw.TextStyle(
+                              color: PdfColors.grey800, fontSize: 10)),
+                    ]),
               ],
-            )
-          );
-        }),
-      ]
-    );
+            ));
+      }).toList(),
+    ]);
   }
 
-  pw.Widget _buildInvestmentsSection(List<Investment> investments, NumberFormat fmt) {
+  pw.Widget _buildInvestmentsSection(
+      List<Investment> investments, NumberFormat fmt) {
     if (investments.isEmpty) return pw.SizedBox();
 
     return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.Text('INVESTMENT PORTFOLIO', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColors.black)),
-        pw.SizedBox(height: 10),
-        pw.TableHelper.fromTextArray(
-          headers: ['Asset', 'Platform', 'Type', 'Invested', 'Current', 'Gain/Loss', 'Return'],
-          data: investments.map((i) {
-            final profitLoss = i.currentValue - i.investedAmount;
-            final profitLossPercent = i.investedAmount > 0 ? (profitLoss / i.investedAmount) * 100 : 0.0;
-            return [
-              i.assetName, 
-              i.platform, 
-              i.investmentType, 
-              fmt.format(i.investedAmount),
-              fmt.format(i.currentValue),
-              fmt.format(profitLoss),
-              '${profitLossPercent > 0 ? '+' : ''}${profitLossPercent.toStringAsFixed(1)}%'
-            ];
-          }).toList(),
-          headerStyle: pw.TextStyle(color: PdfColors.white, fontWeight: pw.FontWeight.bold, fontSize: 9),
-          headerDecoration: const pw.BoxDecoration(color: PdfColors.deepPurple900),
-          cellAlignment: pw.Alignment.centerLeft,
-          cellStyle: const pw.TextStyle(fontSize: 9),
-          cellPadding: const pw.EdgeInsets.all(6),
-          oddRowDecoration: const pw.BoxDecoration(color: PdfColors.grey100),
-        ),
-      ]
-    );
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text('INVESTMENT PORTFOLIO',
+              style: pw.TextStyle(
+                  fontSize: 14,
+                  fontWeight: pw.FontWeight.bold,
+                  color: PdfColors.black)),
+          pw.SizedBox(height: 10),
+          pw.TableHelper.fromTextArray(
+            headers: [
+              'Asset',
+              'Platform',
+              'Type',
+              'Invested',
+              'Current',
+              'Gain/Loss',
+              'Return'
+            ],
+            data: investments.map((i) {
+              final profitLoss = i.currentValue - i.investedAmount;
+              final profitLossPercent = i.investedAmount > 0
+                  ? (profitLoss / i.investedAmount) * 100
+                  : 0.0;
+              return [
+                i.assetName,
+                i.platform,
+                i.investmentType,
+                fmt.format(i.investedAmount),
+                fmt.format(i.currentValue),
+                fmt.format(profitLoss),
+                '${profitLossPercent > 0 ? '+' : ''}${profitLossPercent.toStringAsFixed(1)}%'
+              ];
+            }).toList(),
+            headerStyle: pw.TextStyle(
+                color: PdfColors.white,
+                fontWeight: pw.FontWeight.bold,
+                fontSize: 9),
+            headerDecoration:
+                const pw.BoxDecoration(color: PdfColors.deepPurple900),
+            cellAlignment: pw.Alignment.centerLeft,
+            cellStyle: const pw.TextStyle(fontSize: 9),
+            cellPadding: const pw.EdgeInsets.all(6),
+            oddRowDecoration: const pw.BoxDecoration(color: PdfColors.grey100),
+          ),
+        ]);
   }
 
-  pw.Widget _buildCategoryAnalysis(List<AppTransaction> transactions, NumberFormat fmt) {
+  pw.Widget _buildCategoryAnalysis(
+      List<AppTransaction> transactions, NumberFormat fmt) {
     final expenses = transactions.where((t) => t.type == 'Expense').toList();
     if (expenses.isEmpty) return pw.SizedBox();
 
     final Map<String, double> categoryTotals = {};
     double totalExp = 0;
     for (var e in expenses) {
-      categoryTotals[e.category ?? 'Other'] = (categoryTotals[e.category ?? 'Other'] ?? 0) + e.amount;
+      categoryTotals[e.category ?? 'Other'] =
+          (categoryTotals[e.category ?? 'Other'] ?? 0) + e.amount;
       totalExp += e.amount;
     }
-    final sortedCategories = categoryTotals.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    final sortedCategories = categoryTotals.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
 
     final colors = [
       PdfColors.deepPurple400,
@@ -556,13 +671,15 @@ class MonthlyPdfService {
     ];
 
     return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.Text('EXPENSE ANALYSIS', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColors.black)),
-        pw.SizedBox(height: 10),
-        pw.Row(
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
-          children: [
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text('EXPENSE ANALYSIS',
+              style: pw.TextStyle(
+                  fontSize: 14,
+                  fontWeight: pw.FontWeight.bold,
+                  color: PdfColors.black)),
+          pw.SizedBox(height: 10),
+          pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
             pw.Expanded(
               flex: 1,
               child: pw.SizedBox(
@@ -573,7 +690,8 @@ class MonthlyPdfService {
                     final c = sortedCategories[index];
                     return pw.PieDataSet(
                       value: c.value,
-                      legend: '${c.key} (${((c.value / totalExp) * 100).toStringAsFixed(0)}%)',
+                      legend:
+                          '${c.key} (${((c.value / totalExp) * 100).toStringAsFixed(0)}%)',
                       color: colors[index % colors.length],
                     );
                   }),
@@ -585,53 +703,68 @@ class MonthlyPdfService {
               flex: 1,
               child: pw.TableHelper.fromTextArray(
                 headers: ['Category', 'Amount', '%'],
-                data: sortedCategories.map((c) => [
-                  c.key, 
-                  fmt.format(c.value), 
-                  '${((c.value / totalExp) * 100).toStringAsFixed(1)}%'
-                ]).toList(),
-                headerStyle: pw.TextStyle(color: PdfColors.white, fontWeight: pw.FontWeight.bold, fontSize: 9),
-                headerDecoration: const pw.BoxDecoration(color: PdfColors.deepPurple700),
+                data: sortedCategories
+                    .map((c) => [
+                          c.key,
+                          fmt.format(c.value),
+                          '${((c.value / totalExp) * 100).toStringAsFixed(1)}%'
+                        ])
+                    .toList(),
+                headerStyle: pw.TextStyle(
+                    color: PdfColors.white,
+                    fontWeight: pw.FontWeight.bold,
+                    fontSize: 9),
+                headerDecoration:
+                    const pw.BoxDecoration(color: PdfColors.deepPurple700),
                 cellAlignment: pw.Alignment.centerLeft,
                 cellStyle: const pw.TextStyle(fontSize: 9),
                 cellPadding: const pw.EdgeInsets.all(6),
-                oddRowDecoration: const pw.BoxDecoration(color: PdfColors.grey100),
+                oddRowDecoration:
+                    const pw.BoxDecoration(color: PdfColors.grey100),
               ),
             ),
-          ]
-        )
-      ]
-    );
+          ])
+        ]);
   }
 
-  pw.Widget _buildTransactionTable(List<AppTransaction> transactions, NumberFormat fmt) {
+  pw.Widget _buildTransactionTable(
+      List<AppTransaction> transactions, NumberFormat fmt) {
     if (transactions.isEmpty) {
-      return pw.Text('No transactions found for this period.', style: const pw.TextStyle(color: PdfColors.grey600));
+      return pw.Text('No transactions found for this period.',
+          style: const pw.TextStyle(color: PdfColors.grey600));
     }
 
     return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.Text('DETAILED TRANSACTIONS', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColors.black)),
-        pw.SizedBox(height: 10),
-        pw.TableHelper.fromTextArray(
-          headers: ['Date', 'Category', 'Description', 'Type', 'Amount'],
-          data: transactions.map((t) => [
-            DateFormat('dd MMM').format(t.createdAt),
-            t.category ?? '-',
-            t.title,
-            t.type,
-            fmt.format(t.amount)
-          ]).toList(),
-          headerStyle: pw.TextStyle(color: PdfColors.white, fontWeight: pw.FontWeight.bold, fontSize: 9),
-          headerDecoration: const pw.BoxDecoration(color: PdfColors.black),
-          cellAlignment: pw.Alignment.centerLeft,
-          cellStyle: const pw.TextStyle(fontSize: 9),
-          cellPadding: const pw.EdgeInsets.all(6),
-          oddRowDecoration: const pw.BoxDecoration(color: PdfColors.grey100),
-        ),
-      ]
-    );
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text('DETAILED TRANSACTIONS',
+              style: pw.TextStyle(
+                  fontSize: 14,
+                  fontWeight: pw.FontWeight.bold,
+                  color: PdfColors.black)),
+          pw.SizedBox(height: 10),
+          pw.TableHelper.fromTextArray(
+            headers: ['Date', 'Category', 'Description', 'Type', 'Amount'],
+            data: transactions
+                .map((t) => [
+                      DateFormat('dd MMM').format(t.createdAt),
+                      t.category ?? '-',
+                      t.title,
+                      t.type,
+                      fmt.format(t.amount)
+                    ])
+                .toList(),
+            headerStyle: pw.TextStyle(
+                color: PdfColors.white,
+                fontWeight: pw.FontWeight.bold,
+                fontSize: 9),
+            headerDecoration: const pw.BoxDecoration(color: PdfColors.black),
+            cellAlignment: pw.Alignment.centerLeft,
+            cellStyle: const pw.TextStyle(fontSize: 9),
+            cellPadding: const pw.EdgeInsets.all(6),
+            oddRowDecoration: const pw.BoxDecoration(color: PdfColors.grey100),
+          ),
+        ]);
   }
 
   pw.Widget _statCard(String title, String value, PdfColor valueColor) {
@@ -646,29 +779,35 @@ class MonthlyPdfService {
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          pw.Text(title, style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
+          pw.Text(title,
+              style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
           pw.SizedBox(height: 4),
-          pw.Text(value, style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: valueColor)),
+          pw.Text(value,
+              style: pw.TextStyle(
+                  fontSize: 14,
+                  fontWeight: pw.FontWeight.bold,
+                  color: valueColor)),
         ],
       ),
     );
   }
 
   pw.Widget _buildFooter(int pageNumber, int pagesCount, String statementId) {
-    return pw.Column(
-      children: [
-        pw.SizedBox(height: 10),
-        pw.Divider(color: PdfColors.grey300),
-        pw.SizedBox(height: 5),
-        pw.Row(
-          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-          children: [
-            pw.Text('Generated securely by SmartSpend AI', style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600)),
-            pw.Text('ID: $statementId', style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey500)),
-            pw.Text('Page $pageNumber of $pagesCount', style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600)),
-          ],
-        ),
-      ]
-    );
+    return pw.Column(children: [
+      pw.SizedBox(height: 10),
+      pw.Divider(color: PdfColors.grey300),
+      pw.SizedBox(height: 5),
+      pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        children: [
+          pw.Text('Generated securely by SmartSpend AI',
+              style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600)),
+          pw.Text('ID: $statementId',
+              style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey500)),
+          pw.Text('Page $pageNumber of $pagesCount',
+              style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600)),
+        ],
+      ),
+    ]);
   }
 }

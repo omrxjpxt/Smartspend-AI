@@ -5,10 +5,10 @@ import 'package:intl/intl.dart';
 import '../providers/app_providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
-import '../design_system/components/premium_card.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/user_profile_repository.dart';
 import 'widgets/generate_statement_modal.dart';
+import 'widgets/reset_data_modals.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -55,10 +55,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
           onPressed: () => context.pop(),
         ),
-        title: const Text('Profile', style: TextStyle(color: Colors.white)),
+        title: const Text('Profile', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w600)),
+        centerTitle: true,
       ),
       body: SafeArea(
         child: userProfileAsync.when(
@@ -72,158 +73,234 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             }
 
             return ListView(
-              padding: const EdgeInsets.all(AppSpacing.lg),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
               children: [
-                Center(
-                  child: CircleAvatar(
-                    radius: 50,
-                    backgroundColor: AppColors.accentAI,
-                    child: Text(
-                      profile.name.isNotEmpty ? profile.name[0].toUpperCase() : 'U',
-                      style: const TextStyle(fontSize: 40, color: Colors.white, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xxl),
-                
-                Text('Account Details', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
                 const SizedBox(height: AppSpacing.md),
-                
-                PremiumCard(
-                  padding: const EdgeInsets.all(AppSpacing.lg),
+
+                // ── Avatar + Name + Email ──
+                Center(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Name', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
-                                const SizedBox(height: 4),
-                                if (_isEditingName)
-                                  TextField(
-                                    controller: _nameController,
-                                    style: const TextStyle(color: Colors.white, fontSize: 16),
-                                    decoration: const InputDecoration(
-                                      isDense: true,
-                                      contentPadding: EdgeInsets.symmetric(vertical: 8),
-                                      enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppColors.accentAI)),
-                                      focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppColors.accentAI)),
-                                    ),
-                                  )
-                                else
-                                  Text(profile.name, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500)),
-                              ],
-                            ),
-                          ),
-                          if (!_isEditingName)
-                            IconButton(
-                              icon: const Icon(Icons.edit, color: AppColors.accentAI, size: 20),
-                              onPressed: () => setState(() => _isEditingName = true),
-                            ),
-                        ],
+                      CircleAvatar(
+                        radius: 44,
+                        backgroundColor: AppColors.accentAI.withValues(alpha: 0.85),
+                        child: Text(
+                          profile.name.isNotEmpty ? profile.name[0].toUpperCase() : 'U',
+                          style: const TextStyle(fontSize: 36, color: Colors.white, fontWeight: FontWeight.w700),
+                        ),
                       ),
-                      const Divider(color: Colors.white12, height: 32),
-                      
-                      const Text('Email', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+                      const SizedBox(height: 14),
+                      Text(
+                        profile.name,
+                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white),
+                      ),
                       const SizedBox(height: 4),
-                      Text(profile.email, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500)),
-                      
-                      const Divider(color: Colors.white12, height: 32),
-                      
-                      const Text('Account Created', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
-                      const SizedBox(height: 4),
-                      Text(dateFormatter.format(profile.createdAt), style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500)),
+                      Text(
+                        profile.email,
+                        style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                      ),
                     ],
                   ),
                 ),
-                
+
+                const SizedBox(height: 36),
+
+                // ── Account ──
+                _sectionLabel('Account'),
+                const SizedBox(height: 10),
+                _SettingsGroup(
+                  children: [
+                    _SettingsRow(
+                      label: 'Name',
+                      trailing: _isEditingName
+                          ? Expanded(
+                              child: TextField(
+                                controller: _nameController,
+                                textAlign: TextAlign.right,
+                                style: const TextStyle(color: Colors.white, fontSize: 15),
+                                decoration: const InputDecoration(
+                                  isDense: true,
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.zero,
+                                ),
+                              ),
+                            )
+                          : Text(profile.name, style: const TextStyle(color: AppColors.textSecondary, fontSize: 15)),
+                      onTap: _isEditingName ? null : () => setState(() => _isEditingName = true),
+                      showChevron: !_isEditingName,
+                    ),
+                    _SettingsRow(
+                      label: 'Email',
+                      trailing: Text(profile.email, style: const TextStyle(color: AppColors.textSecondary, fontSize: 15)),
+                    ),
+                    _SettingsRow(
+                      label: 'Member since',
+                      trailing: Text(dateFormatter.format(profile.createdAt), style: const TextStyle(color: AppColors.textSecondary, fontSize: 15)),
+                      showDivider: false,
+                    ),
+                  ],
+                ),
+
                 if (_isEditingName) ...[
-                  const SizedBox(height: AppSpacing.lg),
-                  ElevatedButton(
-                    onPressed: _isSaving ? null : _saveName,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.accentAI,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      minimumSize: const Size(double.infinity, 50),
-                    ),
-                    child: _isSaving 
-                        ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                        : const Text('Save Changes', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  TextButton(
-                    onPressed: _isSaving ? null : () {
-                      setState(() {
-                        _isEditingName = false;
-                        _nameController.text = profile.name;
-                      });
-                    },
-                    style: TextButton.styleFrom(
-                      minimumSize: const Size(double.infinity, 50),
-                    ),
-                    child: const Text('Cancel', style: TextStyle(fontSize: 16, color: AppColors.textSecondary)),
+                  const SizedBox(height: AppSpacing.md),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: _isSaving
+                              ? null
+                              : () {
+                                  setState(() {
+                                    _isEditingName = false;
+                                    _nameController.text = profile.name;
+                                  });
+                                },
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: const Text('Cancel', style: TextStyle(fontSize: 15, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: _isSaving ? null : _saveName,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.accentAI,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            elevation: 0,
+                          ),
+                          child: _isSaving
+                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                              : const Text('Save', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
-                
-                const SizedBox(height: AppSpacing.xxl),
-                Text('Financial Statements', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-                const SizedBox(height: AppSpacing.md),
-                
-                PremiumCard(
-                  padding: EdgeInsets.zero,
-                  child: ListTile(
-                    leading: const Icon(Icons.picture_as_pdf, color: AppColors.accentAI),
-                    title: const Text('Generate Statement', style: TextStyle(color: Colors.white)),
-                    subtitle: const Text('Download your monthly financial report', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                    trailing: const Icon(Icons.chevron_right, color: Colors.white54),
-                    onTap: () {
-                      GenerateStatementModal.show(context);
-                    },
+
+                const SizedBox(height: 32),
+
+                // ── General ──
+                _sectionLabel('General'),
+                const SizedBox(height: 10),
+                _SettingsGroup(
+                  children: [
+                    _SettingsRow(
+                      icon: Icons.description_outlined,
+                      iconColor: AppColors.accentAI,
+                      label: 'Generate Statement',
+                      onTap: () => GenerateStatementModal.show(context),
+                    ),
+                    _SettingsRow(
+                      icon: Icons.lock_outline,
+                      iconColor: AppColors.textSecondary,
+                      label: 'Change Password',
+                      showDivider: false,
+                      onTap: () async {
+                        try {
+                          await ref.read(authRepositoryProvider).sendPasswordResetEmail(profile.email);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password reset email sent')));
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                          }
+                        }
+                      },
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 32),
+
+                // ── Logout ──
+                _SettingsGroup(
+                  children: [
+                    _SettingsRow(
+                      label: 'Log Out',
+                      labelColor: AppColors.negative,
+                      showChevron: false,
+                      showDivider: false,
+                      onTap: () async {
+                        await ref.read(authRepositoryProvider).signOut();
+                      },
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 48),
+
+                // ── Danger Zone ──
+                Padding(
+                  padding: const EdgeInsets.only(left: 4),
+                  child: Text(
+                    'Danger Zone',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.negative.withValues(alpha: 0.7),
+                      letterSpacing: 0.4,
+                    ),
                   ),
                 ),
-                
-                const SizedBox(height: AppSpacing.xxl),
-                Text('Settings', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-                const SizedBox(height: AppSpacing.md),
-                
-                PremiumCard(
-                  padding: EdgeInsets.zero,
+                const SizedBox(height: 8),
+                GestureDetector(
+                  onTap: () => ResetDataFirstModal.show(context),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: AppColors.negative.withValues(alpha: 0.15),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete_outline, color: AppColors.negative.withValues(alpha: 0.8), size: 20),
+                        const SizedBox(width: 12),
+                        const Text(
+                          'Reset All Data',
+                          style: TextStyle(
+                            color: AppColors.negative,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const Spacer(),
+                        Icon(Icons.chevron_right, color: AppColors.negative.withValues(alpha: 0.35), size: 20),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 48),
+
+                // ── Footer ──
+                Center(
                   child: Column(
                     children: [
-                      ListTile(
-                        leading: const Icon(Icons.lock_outline, color: AppColors.accentAI),
-                        title: const Text('Change Password', style: TextStyle(color: Colors.white)),
-                        trailing: const Icon(Icons.chevron_right, color: Colors.white54),
-                        onTap: () async {
-                          try {
-                            await ref.read(authRepositoryProvider).sendPasswordResetEmail(profile.email);
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password reset email sent')));
-                            }
-                          } catch (e) {
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-                            }
-                          }
-                        },
+                      Image.asset(
+                        'assets/images/logo.png',
+                        height: 24,
+                        fit: BoxFit.contain,
+                        opacity: const AlwaysStoppedAnimation(0.4),
                       ),
-                      const Divider(color: Colors.white12, height: 1),
-                      ListTile(
-                        leading: const Icon(Icons.logout, color: AppColors.negative),
-                        title: const Text('Logout', style: TextStyle(color: AppColors.negative)),
-                        onTap: () async {
-                          await ref.read(authRepositoryProvider).signOut();
-                          // Router will auto-redirect to login via authState provider
-                        },
+                      const SizedBox(height: 6),
+                      const Text(
+                        'SmartSpend AI',
+                        style: TextStyle(fontSize: 12, color: AppColors.textTertiary, fontWeight: FontWeight.w500),
                       ),
                     ],
                   ),
                 ),
+
+                const SizedBox(height: AppSpacing.xxl),
               ],
             );
           },
@@ -231,6 +308,111 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           error: (e, s) => Center(child: Text('Error: $e')),
         ),
       ),
+    );
+  }
+
+  Widget _sectionLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Text(
+        text.toUpperCase(),
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: AppColors.textTertiary,
+          letterSpacing: 0.6,
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────
+// iOS-style grouped settings container
+// ─────────────────────────────────────────────────
+class _SettingsGroup extends StatelessWidget {
+  final List<_SettingsRow> children;
+  const _SettingsGroup({required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: children,
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────
+// Single row inside a settings group
+// ─────────────────────────────────────────────────
+class _SettingsRow extends StatelessWidget {
+  final IconData? icon;
+  final Color? iconColor;
+  final String label;
+  final Color? labelColor;
+  final Widget? trailing;
+  final bool showChevron;
+  final bool showDivider;
+  final VoidCallback? onTap;
+
+  const _SettingsRow({
+    this.icon,
+    this.iconColor,
+    required this.label,
+    this.labelColor,
+    this.trailing,
+    this.showChevron = true,
+    this.showDivider = true,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+            child: Row(
+              children: [
+                if (icon != null) ...[
+                  Icon(icon, size: 20, color: iconColor ?? AppColors.textSecondary),
+                  const SizedBox(width: 12),
+                ],
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w400,
+                    color: labelColor ?? Colors.white,
+                  ),
+                ),
+                const Spacer(),
+                if (trailing != null) trailing!,
+                if (showChevron && onTap != null) ...[
+                  const SizedBox(width: 6),
+                  const Icon(Icons.chevron_right, size: 20, color: AppColors.textTertiary),
+                ],
+              ],
+            ),
+          ),
+        ),
+        if (showDivider)
+          Padding(
+            padding: EdgeInsets.only(left: icon != null ? 48.0 : 16.0),
+            child: const Divider(height: 0.5, thickness: 0.5, color: AppColors.border),
+          ),
+        ],
     );
   }
 }

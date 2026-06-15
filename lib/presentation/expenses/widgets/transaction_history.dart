@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../providers/app_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import 'package:go_router/go_router.dart';
 
 class TransactionHistory extends ConsumerWidget {
   const TransactionHistory({super.key});
@@ -28,11 +29,14 @@ class TransactionHistory extends ConsumerWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              Text(
-                'See All',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: AppColors.accentAI,
-                  fontWeight: FontWeight.w600,
+              GestureDetector(
+                onTap: () => context.push('/expenses/history'),
+                child: Text(
+                  'See All',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: AppColors.accentAI,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
@@ -54,7 +58,9 @@ class TransactionHistory extends ConsumerWidget {
                 );
               }
 
-              final recentExpenses = expenses.take(10).toList();
+              final sortedExpenses = List.of(expenses)
+                ..sort((a, b) => b.date.compareTo(a.date));
+              final recentExpenses = sortedExpenses.take(5).toList();
               return ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
@@ -110,8 +116,9 @@ class TransactionHistory extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text(
-                              currencyFormatter.format(tx.amount),
+                              '-${currencyFormatter.format(tx.amount)}',
                               style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                color: AppColors.negative,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),

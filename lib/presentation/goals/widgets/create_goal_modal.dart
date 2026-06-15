@@ -4,7 +4,6 @@ import '../../../../domain/entities/goal.dart';
 import '../../../../data/repositories/goals_repository.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
-import '../../../../data/repositories/transactions_repository.dart';
 
 class CreateGoalModal extends ConsumerStatefulWidget {
   const CreateGoalModal({super.key});
@@ -18,8 +17,6 @@ class _CreateGoalModalState extends ConsumerState<CreateGoalModal> {
   String _name = '';
   double _targetAmount = 0;
   double _currentAmount = 0;
-  double _monthlyContribution = 0;
-  final DateTime _targetDate = DateTime.now().add(const Duration(days: 365));
   String _category = 'Gadget';
 
   final List<String> _categories = [
@@ -42,27 +39,16 @@ class _CreateGoalModalState extends ConsumerState<CreateGoalModal> {
   void _saveGoal() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
-      
+
       final goal = Goal(
         id: '', // Firestore will generate ID
         title: _name,
         emoji: _getEmojiForCategory(_category),
         currentAmount: _currentAmount,
         targetAmount: _targetAmount,
-        monthlyContribution: _monthlyContribution,
-        estimatedCompletion: _targetDate,
       );
 
       await ref.read(goalsRepositoryProvider).createGoal(goal);
-      if (_currentAmount > 0) {
-        await ref.read(transactionsRepositoryProvider).addTransaction(
-          type: 'Goal Contribution',
-          title: _name,
-          amount: _currentAmount,
-          category: _category,
-        );
-      }
-
       if (mounted) Navigator.pop(context);
     }
   }
@@ -91,6 +77,7 @@ class _CreateGoalModalState extends ConsumerState<CreateGoalModal> {
                 'Create New Goal',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.w700,
+                  color: Colors.white,
                 ),
               ),
               const SizedBox(height: AppSpacing.xl),
@@ -103,7 +90,9 @@ class _CreateGoalModalState extends ConsumerState<CreateGoalModal> {
                   filled: true,
                   fillColor: AppColors.background,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  labelStyle: const TextStyle(color: AppColors.textSecondary),
                 ),
+                style: const TextStyle(color: Colors.white),
                 dropdownColor: AppColors.surfaceHighlight,
                 items: _categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
                 onChanged: (val) => setState(() => _category = val!),
@@ -117,7 +106,9 @@ class _CreateGoalModalState extends ConsumerState<CreateGoalModal> {
                   filled: true,
                   fillColor: AppColors.background,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  labelStyle: const TextStyle(color: AppColors.textSecondary),
                 ),
+                style: const TextStyle(color: Colors.white),
                 validator: (val) => val == null || val.isEmpty ? 'Required' : null,
                 onSaved: (val) => _name = val!,
               ),
@@ -131,7 +122,9 @@ class _CreateGoalModalState extends ConsumerState<CreateGoalModal> {
                   filled: true,
                   fillColor: AppColors.background,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  labelStyle: const TextStyle(color: AppColors.textSecondary),
                 ),
+                style: const TextStyle(color: Colors.white),
                 keyboardType: TextInputType.number,
                 validator: (val) => val == null || double.tryParse(val) == null ? 'Invalid amount' : null,
                 onSaved: (val) => _targetAmount = double.parse(val!),
@@ -141,31 +134,18 @@ class _CreateGoalModalState extends ConsumerState<CreateGoalModal> {
               // Current Saved Amount
               TextFormField(
                 decoration: InputDecoration(
-                  labelText: 'Current Saved Amount',
+                  labelText: 'Current Saved Amount (Optional)',
                   prefixText: '₹ ',
                   filled: true,
                   fillColor: AppColors.background,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  labelStyle: const TextStyle(color: AppColors.textSecondary),
                 ),
+                style: const TextStyle(color: Colors.white),
                 keyboardType: TextInputType.number,
                 initialValue: '0',
                 validator: (val) => val == null || double.tryParse(val) == null ? 'Invalid amount' : null,
                 onSaved: (val) => _currentAmount = double.parse(val!),
-              ),
-              const SizedBox(height: AppSpacing.md),
-
-              // Monthly Contribution
-              TextFormField(
-                decoration: InputDecoration(
-                  labelText: 'Monthly Contribution',
-                  prefixText: '₹ ',
-                  filled: true,
-                  fillColor: AppColors.background,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                ),
-                keyboardType: TextInputType.number,
-                validator: (val) => val == null || double.tryParse(val) == null ? 'Invalid amount' : null,
-                onSaved: (val) => _monthlyContribution = double.parse(val!),
               ),
               const SizedBox(height: AppSpacing.xl),
 
@@ -188,3 +168,4 @@ class _CreateGoalModalState extends ConsumerState<CreateGoalModal> {
     );
   }
 }
+

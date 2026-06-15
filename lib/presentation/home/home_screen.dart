@@ -6,9 +6,8 @@ import '../../core/theme/app_spacing.dart';
 import 'widgets/greeting_header.dart';
 import 'widgets/ai_coach_hero_card.dart';
 import 'widgets/section_heading.dart';
-import 'widgets/home_stats_grid.dart';
 import 'widgets/financial_snapshot_card.dart';
-import 'widgets/quick_actions_row.dart';
+import 'widgets/home_actions_row.dart';
 import 'widgets/recent_activity_list.dart';
 
 import '../../data/repositories/transactions_repository.dart';
@@ -45,13 +44,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               GreetingHeader(name: userName),
               const AiCoachHeroCard(),
               const SizedBox(height: AppSpacing.xxl),
-              const SectionHeading(title: "Overview"),
-              const HomeStatsGrid(),
-              const SizedBox(height: AppSpacing.xl),
-              const SectionHeading(title: "Quick Actions"),
-              const QuickActionsRow(),
-              const SizedBox(height: AppSpacing.xl),
               const FinancialSnapshotCard(),
+              const SizedBox(height: AppSpacing.lg),
+              const HomeActionsRow(),
               const SizedBox(height: AppSpacing.xxl),
               SectionHeading(
                 title: 'Recent Activity',
