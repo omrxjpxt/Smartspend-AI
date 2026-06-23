@@ -169,6 +169,42 @@ class _InvestmentDetailsModalState
               color: AppColors.negative,
             ))
           else ...[
+            // Buy / Sell Buttons
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => _showTransactionModal(context, 'BUY'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.positive,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusMd)),
+                    ),
+                    child: const Text('Buy More',
+                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: Colors.white)),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => _showTransactionModal(context, 'SELL'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.accentAI,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusMd)),
+                    ),
+                    child: const Text('Sell Units',
+                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: Colors.white)),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+
             // Delete button
             SizedBox(
               width: double.infinity,
@@ -213,6 +249,22 @@ class _InvestmentDetailsModalState
       ),
     );
   }
+
+  void _showTransactionModal(BuildContext context, String action) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _InvestmentTransactionSheet(
+        investment: widget.investment,
+        action: action,
+        onSuccess: () {
+          Navigator.pop(ctx);
+          Navigator.pop(context); // close details modal as well
+        },
+      ),
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -249,6 +301,221 @@ class _DetailRow extends StatelessWidget {
                   fontWeight: FontWeight.w500),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Transaction Sheet for Buy / Sell
+// ---------------------------------------------------------------------------
+
+class _InvestmentTransactionSheet extends ConsumerStatefulWidget {
+  final Investment investment;
+  final String action; // 'BUY' or 'SELL'
+  final VoidCallback onSuccess;
+
+  const _InvestmentTransactionSheet({
+    required this.investment,
+    required this.action,
+    required this.onSuccess,
+  });
+
+  @override
+  ConsumerState<_InvestmentTransactionSheet> createState() => _InvestmentTransactionSheetState();
+}
+
+class _InvestmentTransactionSheetState extends ConsumerState<_InvestmentTransactionSheet> {
+  final _amountController = TextEditingController();
+  final _quantityController = TextEditingController();
+  DateTime _selectedDate = DateTime.now();
+  bool _isLoading = false;
+
+  Future<void> _submitTransaction() async {
+    final amount = double.tryParse(_amountController.text) ?? 0.0;
+    final quantity = double.tryParse(_quantityController.text) ?? 0.0;
+
+    if (amount <= 0 || quantity <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter valid amount and quantity')),
+      );
+      return;
+    }
+
+    if (widget.action == 'SELL' && quantity > widget.investment.quantity) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cannot sell more units than you own')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final repo = ref.read(investmentsRepositoryProvider);
+      if (widget.action == 'BUY') {
+        await repo.buyInvestment(widget.investment, quantity, amount, _selectedDate);
+      } else {
+        await repo.sellInvestment(widget.investment, quantity, amount, _selectedDate);
+      }
+      
+      if (mounted) {
+        widget.onSuccess();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${widget.action == 'BUY' ? 'Bought' : 'Sold'} successfully')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Transaction failed. Please try again.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    _quantityController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isBuy = widget.action == 'BUY';
+    final title = isBuy ? 'Buy More' : 'Sell Units';
+    final color = isBuy ? AppColors.positive : AppColors.accentAI;
+
+    return Container(
+      padding: EdgeInsets.only(
+        left: AppSpacing.xl,
+        right: AppSpacing.xl,
+        top: AppSpacing.lg,
+        bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.xl,
+      ),
+      decoration: const BoxDecoration(
+        color: AppColors.surfaceHighlight,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          Text(
+            title,
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            '${widget.investment.assetName} • ${widget.investment.platform}',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+
+          // Quantity Input
+          TextField(
+            controller: _quantityController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              labelText: 'Quantity',
+              labelStyle: const TextStyle(color: AppColors.textSecondary),
+              filled: true,
+              fillColor: AppColors.surface,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+
+          // Amount Input
+          TextField(
+            controller: _amountController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              labelText: 'Amount (₹)',
+              labelStyle: const TextStyle(color: AppColors.textSecondary),
+              filled: true,
+              fillColor: AppColors.surface,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+
+          // Date Selector (simple for now)
+          InkWell(
+            onTap: () async {
+              final d = await showDatePicker(
+                context: context,
+                initialDate: _selectedDate,
+                firstDate: DateTime(2000),
+                lastDate: DateTime.now(),
+              );
+              if (d != null && mounted) {
+                setState(() => _selectedDate = d);
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 15),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    DateFormat('MMM d, yyyy').format(_selectedDate),
+                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                  ),
+                  const Icon(Icons.calendar_today, color: AppColors.textSecondary, size: 20),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xxl),
+
+          if (_isLoading)
+            const Center(child: CircularProgressIndicator(color: AppColors.accentAI))
+          else
+            ElevatedButton(
+              onPressed: _submitTransaction,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: color,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 15),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusMd)),
+              ),
+              child: const Text('Confirm',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: Colors.white)),
+            ),
         ],
       ),
     );

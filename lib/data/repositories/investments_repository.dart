@@ -3,17 +3,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/investment.dart';
 import '../../domain/entities/investment_transaction.dart';
 import 'auth_repository.dart';
+import 'transactions_repository.dart';
 
 final investmentsRepositoryProvider = Provider((ref) {
   final uid = ref.watch(authStateProvider).valueOrNull?.uid ?? 'anonymous';
-  return InvestmentsRepository(uid);
+  final transactionsRepo = ref.watch(transactionsRepositoryProvider);
+  return InvestmentsRepository(uid, transactionsRepo);
 });
 
 class InvestmentsRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final String userId;
+  final TransactionsRepository _transactionsRepo;
   
-  InvestmentsRepository(this.userId);
+  InvestmentsRepository(this.userId, this._transactionsRepo);
 
   CollectionReference<Map<String, dynamic>> get _investmentsRef =>
       _firestore.collection('users').doc(userId).collection('investments');
@@ -104,5 +107,70 @@ class InvestmentsRepository {
       'quantity': transaction.quantity,
       'timestamp': FieldValue.serverTimestamp(),
     });
+  }
+
+  Future<void> buyInvestment(Investment investment, double additionalQuantity, double amount, DateTime date) async {
+    final newQuantity = investment.quantity + additionalQuantity;
+    final newAmount = investment.investedAmount + amount;
+    
+    final newPricePerShare = newQuantity > 0 ? newAmount / newQuantity : 0.0;
+
+    await updateInvestment(investment.copyWith(
+      quantity: newQuantity,
+      investedAmount: newAmount,
+      purchasePricePerShare: newPricePerShare,
+    ));
+
+    await logInvestmentTransaction(InvestmentTransaction(
+      id: '',
+      action: 'BUY',
+      assetName: investment.assetName,
+      platform: investment.platform,
+      amount: amount,
+      quantity: additionalQuantity,
+      timestamp: date,
+    ));
+
+    await _transactionsRepo.addTransaction(
+      type: 'Investment Purchase',
+      title: investment.assetName,
+      amount: amount,
+      category: investment.platform,
+      dateOverride: date,
+    );
+  }
+
+  Future<void> sellInvestment(Investment investment, double soldQuantity, double amount, DateTime date) async {
+    final newQuantity = investment.quantity - soldQuantity;
+    // Calculate the cost basis of the sold units to reduce the invested amount correctly
+    final costBasisOfSoldUnits = investment.purchasePricePerShare * soldQuantity;
+    final newAmount = investment.investedAmount - costBasisOfSoldUnits;
+
+    if (newQuantity <= 0) {
+      await deleteInvestment(investment.id);
+    } else {
+      await updateInvestment(investment.copyWith(
+        quantity: newQuantity,
+        investedAmount: newAmount > 0 ? newAmount : 0,
+      ));
+    }
+
+    await logInvestmentTransaction(InvestmentTransaction(
+      id: '',
+      action: 'SELL',
+      assetName: investment.assetName,
+      platform: investment.platform,
+      amount: amount,
+      quantity: soldQuantity,
+      timestamp: date,
+    ));
+
+    await _transactionsRepo.addTransaction(
+      type: 'Investment Sale',
+      title: investment.assetName,
+      amount: amount,
+      category: investment.platform,
+      dateOverride: date,
+    );
   }
 }

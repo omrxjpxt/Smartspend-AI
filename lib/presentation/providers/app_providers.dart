@@ -80,7 +80,10 @@ final availableBalanceProvider = Provider<double>((ref) {
   return transactions.fold(0.0, (sum, tx) {
     if (tx.type == 'Income' || tx.type == 'Received') return sum + tx.amount;
     if (tx.type == 'Expense') return sum - tx.amount;
-    return sum; // Ignore Investments or Goal Contributions in raw available balance unless they act as expenses
+    if (tx.type == 'Investment Sale') return sum + tx.amount;
+    if (tx.type == 'Investment Purchase' || tx.type == 'Investment') return sum - tx.amount;
+    if (tx.type == 'Goal Contribution') return sum - tx.amount;
+    return sum;
   });
 });
 

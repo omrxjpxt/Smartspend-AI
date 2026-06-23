@@ -1,12 +1,8 @@
-import 'dart:convert';
-import 'dart:async';
-import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
-import 'package:crypto/crypto.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-final aiServiceProvider = Provider((ref) => AiService());
+import '../domain/interfaces/ai_provider.dart';
+import '../data/providers/disabled_ai_provider.dart';
+import 'local_intelligence_engine.dart';
+import 'dart:async';
 
 class AiCooldownNotifier extends StateNotifier<int> {
   Timer? _timer;
@@ -14,8 +10,8 @@ class AiCooldownNotifier extends StateNotifier<int> {
   AiCooldownNotifier() : super(0);
 
   void startCooldown(int seconds) {
-    state = seconds;
     _timer?.cancel();
+    state = seconds;
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (state > 0) {
         state--;
@@ -36,66 +32,16 @@ final aiCooldownProvider = StateNotifierProvider<AiCooldownNotifier, int>((ref) 
   return AiCooldownNotifier();
 });
 
-class _CacheEntry {
-  final String response;
-  final DateTime timestamp;
-  _CacheEntry(this.response, this.timestamp);
-}
+final aiServiceProvider = Provider((ref) => AiService(ref));
 
 class AiService {
-  GenerativeModel? _model;
-  
-  // Rate Limit Sliding Windows
-  final List<DateTime> _minuteWindow = [];
-  final List<DateTime> _hourWindow = [];
+  final ProviderRef ref;
+  late final AIProvider _aiProvider;
+  late final LocalIntelligenceEngine _localEngine;
 
-  // Cache to store identical requests: hash(prompt + context) -> _CacheEntry
-  final Map<String, _CacheEntry> _cache = {};
-
-  AiService() {
-    _initModel();
-  }
-
-  void _initModel() {
-    try {
-      final apiKey = dotenv.env['GEMINI_API_KEY'];
-      if (apiKey != null && apiKey.isNotEmpty) {
-        _model = GenerativeModel(
-          model: 'gemini-1.5-flash',
-          apiKey: apiKey,
-        );
-      }
-    } catch (e) {
-      debugPrint('Failed to initialize AI model: $e');
-    }
-  }
-
-  String _generateCacheKey(String prompt, String context) {
-    final bytes = utf8.encode(prompt + context);
-    return sha256.convert(bytes).toString();
-  }
-
-  void _cleanWindows() {
-    final now = DateTime.now();
-    _minuteWindow.removeWhere((t) => now.difference(t).inSeconds >= 60);
-    _hourWindow.removeWhere((t) => now.difference(t).inMinutes >= 60);
-  }
-
-  int _getSecondsUntilNextRequest() {
-    _cleanWindows();
-    if (_minuteWindow.length >= 10) {
-      return 60 - DateTime.now().difference(_minuteWindow.first).inSeconds;
-    }
-    if (_hourWindow.length >= 100) {
-      return 3600 - DateTime.now().difference(_hourWindow.first).inSeconds;
-    }
-    return 0;
-  }
-
-  void _recordRequest() {
-    final now = DateTime.now();
-    _minuteWindow.add(now);
-    _hourWindow.add(now);
+  AiService(this.ref) {
+    _aiProvider = DisabledAIProvider();
+    _localEngine = ref.read(localIntelligenceProvider);
   }
 
   Future<String> generateInsight({
@@ -103,129 +49,67 @@ class AiService {
     required String context, 
     required String userPrompt, 
     dynamic ref,
-    bool bypassRateLimit = false, // Sometimes we might want to bypass (e.g. initial silent fetch)
+    bool bypassRateLimit = false,
   }) async {
-    // Attempt re-init if API key was added later
-    if (_model == null) _initModel();
-
-    if (_model == null) {
-      return "AI is currently unavailable. Please check your API key in .env.";
+    // 1. Try Local Engine first
+    final localResponse = await _localEngine.handleQuery(userPrompt);
+    if (localResponse != null) {
+      return localResponse;
     }
 
-    final cacheKey = _generateCacheKey(userPrompt, context);
-    if (_cache.containsKey(cacheKey)) {
-      final entry = _cache[cacheKey]!;
-      if (DateTime.now().difference(entry.timestamp).inMinutes < 30) {
-        debugPrint("--- AI CACHE HIT ---");
-        return entry.response;
-      } else {
-        _cache.remove(cacheKey); // Expired
-      }
-    }
-
-    debugPrint("--- AI CACHE MISS - Gemini request sent ---");
-
-    final currentCooldown = ref.read(aiCooldownProvider);
-    if (!bypassRateLimit && currentCooldown > 0) {
-      return "Too many requests. Try again in $currentCooldown seconds.";
-    }
-
-    if (!bypassRateLimit) {
-      final waitSeconds = _getSecondsUntilNextRequest();
-      if (waitSeconds > 0) {
-        ref.read(aiCooldownProvider.notifier).startCooldown(waitSeconds);
-        return "Too many requests. Try again in $waitSeconds seconds.";
-      }
-    }
-
-    final fullPrompt = '''
-$systemPrompt
-
---- USER FINANCIAL DATA ---
-$context
-
---- USER PROMPT ---
-$userPrompt
-''';
-
-    try {
-      if (!bypassRateLimit) {
-        _recordRequest();
-      }
-
-      final response = await _model!.generateContent(
-        [Content.text(fullPrompt)],
-      ).timeout(const Duration(seconds: 15));
-
-      final result = response.text ?? "I couldn't process that. Please try again.";
-      _cache[cacheKey] = _CacheEntry(result, DateTime.now());
-      return result;
-    } on TimeoutException {
-      return "Connection timeout. Try again.";
-    } catch (e) {
-      debugPrint("AI Request Error: $e");
-      if (kDebugMode) {
-        return "Gemini API Error:\n$e";
-      }
-      return "AI is currently unavailable. Please try again later.";
-    }
+    // 2. Fallback to AI Provider
+    return await _aiProvider.generateResponse(
+      systemPrompt: systemPrompt,
+      context: context,
+      userPrompt: userPrompt,
+    );
   }
 
-  // A method for generating streams if needed for chat
   Stream<String> generateChatStream({
     required String systemPrompt,
     required String context,
-    required List<Content> chatHistory,
+    required List<dynamic> chatHistory,
     dynamic ref,
   }) async* {
-    if (_model == null) _initModel();
-    if (_model == null) {
-      yield "AI is currently unavailable.";
-      return;
-    }
-
-    final currentCooldown = ref.read(aiCooldownProvider);
-    if (currentCooldown > 0) {
-      yield "Too many requests. Try again in $currentCooldown seconds.";
-      return;
-    }
-
-    final waitSeconds = _getSecondsUntilNextRequest();
-    if (waitSeconds > 0) {
-      ref.read(aiCooldownProvider.notifier).startCooldown(waitSeconds);
-      yield "Too many requests. Try again in $waitSeconds seconds.";
-      return;
-    }
-
-    try {
-      _recordRequest();
-
-      final chat = _model!.startChat(history: chatHistory);
-      
-      final enhancedPrompt = '''
-$systemPrompt
-
---- USER FINANCIAL DATA ---
-$context
-''';
-
-      // We prepend the financial context silently as part of the new message.
-      final responseStream = chat.sendMessageStream(Content.text(enhancedPrompt));
-      
-      await for (final chunk in responseStream) {
-        if (chunk.text != null) {
-          yield chunk.text!;
-        }
-      }
-    } on TimeoutException {
-      yield "Connection timeout. Try again.";
-    } catch (e) {
-      debugPrint("AI Stream Error: $e");
-      if (kDebugMode) {
-        yield "Gemini API Error:\n$e";
-      } else {
-        yield "AI is currently unavailable.";
+    String lastUserMessage = "";
+    if (chatHistory.isNotEmpty) {
+      lastUserMessage = chatHistory.last.toString();
+      // Hack for dynamic objects coming from chat screen since Content is gone.
+      if (chatHistory.last is Map) {
+        lastUserMessage = (chatHistory.last as Map)['message'] ?? '';
       }
     }
+
+    final localResponse = await _localEngine.handleQuery(lastUserMessage);
+    if (localResponse != null) {
+      final chunks = localResponse.split('\n');
+      for (var chunk in chunks) {
+        yield chunk + '\n';
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+      return;
+    }
+
+    final response = await _aiProvider.generateResponse(
+      systemPrompt: systemPrompt,
+      context: context,
+      userPrompt: lastUserMessage,
+    );
+    
+    final chunks = response.split(' ');
+    for (var chunk in chunks) {
+      yield chunk + ' ';
+      await Future.delayed(const Duration(milliseconds: 50));
+    }
+  }
+
+  Future<Map<String, dynamic>> validateAiConnection() async {
+    return {
+      'apiKeyLoaded': false,
+      'connected': true,
+      'model': 'Local Intelligence Engine',
+      'success': true,
+      'message': 'Connected to local deterministic engine.',
+    };
   }
 }

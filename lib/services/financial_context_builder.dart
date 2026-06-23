@@ -13,13 +13,13 @@ final financialContextProvider = Provider<String>((ref) {
   final transactions = ref.watch(allTransactionsProvider).valueOrNull ?? [];
   
   final now = DateTime.now();
-  final monthlyIncome = userProfile?.monthlyIncome ?? 0;
+  final currentMonthReceived = ref.watch(currentMonthReceivedProvider);
   
   final monthlyExpenses = expenses
       .where((e) => e.date.month == now.month && e.date.year == now.year)
       .fold(0.0, (sum, e) => sum + e.amount);
       
-  final monthlySavings = (monthlyIncome - monthlyExpenses).clamp(0.0, double.infinity);
+  final monthlySavings = (currentMonthReceived - monthlyExpenses).clamp(0.0, double.infinity);
   
   final activeGoals = goals.where((g) => g.currentAmount < g.targetAmount).map((g) => {
     "name": g.title,
@@ -54,7 +54,7 @@ final financialContextProvider = Provider<String>((ref) {
   
   final contextMap = {
     "availableBalance": CurrencyFormatter.format(availableBalance),
-    "monthlyIncome": CurrencyFormatter.format(monthlyIncome),
+    "monthlyIncome": CurrencyFormatter.format(currentMonthReceived),
     "monthlyExpenses": CurrencyFormatter.format(monthlyExpenses),
     "monthlySavings": CurrencyFormatter.format(monthlySavings),
     "activeGoals": activeGoals,

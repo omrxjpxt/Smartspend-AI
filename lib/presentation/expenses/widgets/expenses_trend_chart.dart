@@ -18,9 +18,11 @@ class ExpensesTrendChart extends ConsumerWidget {
     final now = DateTime.now();
     final List<double> dailySpend = List.filled(7, 0.0);
     double maxSpend = 0.0;
+    final today = DateTime(now.year, now.month, now.day);
     
     for (var tx in expenses) {
-      final diff = now.difference(tx.date).inDays;
+      final txDate = DateTime(tx.date.year, tx.date.month, tx.date.day);
+      final diff = today.difference(txDate).inDays;
       if (diff >= 0 && diff < 7) {
         // diff=0 is today, so map it to the end of the array
         final index = 6 - diff;

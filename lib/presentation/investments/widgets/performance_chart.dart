@@ -1,13 +1,51 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../providers/app_providers.dart';
 
-class PerformanceChart extends StatelessWidget {
+class PerformanceChart extends ConsumerWidget {
   const PerformanceChart({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final transactionsAsync = ref.watch(investmentTransactionsProvider);
+    final transactions = transactionsAsync.valueOrNull ?? [];
+
+    List<FlSpot> spots = [];
+    if (transactions.isNotEmpty) {
+      final sorted = List.of(transactions)..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+      
+      double cumulativeAmount = 0.0;
+      final start = sorted.first.timestamp;
+      
+      for (var tx in sorted) {
+        final days = tx.timestamp.difference(start).inDays.toDouble();
+        if (tx.action == 'BUY') {
+          cumulativeAmount += tx.amount;
+        } else if (tx.action == 'SELL') {
+          cumulativeAmount -= tx.amount; // Basic tracking of remaining invested amount over time
+        }
+        
+        spots.add(FlSpot(days, cumulativeAmount));
+      }
+      
+      if (spots.length == 1) {
+        final todayDays = DateTime.now().difference(start).inDays.toDouble();
+        if (todayDays > 0) {
+          spots.add(FlSpot(todayDays, cumulativeAmount));
+        } else {
+          spots.add(FlSpot(1, cumulativeAmount));
+        }
+      }
+    } else {
+      spots = const [
+        FlSpot(0, 0),
+        FlSpot(1, 0),
+      ];
+    }
+
     return Column(
       children: [
         SizedBox(
@@ -19,15 +57,7 @@ class PerformanceChart extends StatelessWidget {
               borderData: FlBorderData(show: false),
               lineBarsData: [
                 LineChartBarData(
-                  spots: const [
-                    FlSpot(0, 300),
-                    FlSpot(1, 310),
-                    FlSpot(2, 305),
-                    FlSpot(3, 330),
-                    FlSpot(4, 345),
-                    FlSpot(5, 360),
-                    FlSpot(6, 387),
-                  ],
+                  spots: spots,
                   isCurved: true,
                   color: AppColors.positive,
                   barWidth: 3,

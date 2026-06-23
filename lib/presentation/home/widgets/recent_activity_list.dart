@@ -72,10 +72,16 @@ class RecentActivityList extends ConsumerWidget {
                     color = AppColors.positive;
                     prefix = '+';
                     break;
+                  case 'Investment Purchase':
                   case 'Investment':
                     icon = Icons.trending_up;
-                    color = AppColors.accentAI;
+                    color = AppColors.negative;
                     prefix = '-';
+                    break;
+                  case 'Investment Sale':
+                    icon = Icons.trending_down;
+                    color = AppColors.positive;
+                    prefix = '+';
                     break;
                   case 'Goal Contribution':
                     icon = Icons.flag;

@@ -173,12 +173,49 @@ class _ChatSessionScreenState extends ConsumerState<ChatSessionScreen> {
                       ? _buildLoadingState()
                       : _buildMessageList(),
             ),
+            _buildQuickActionsRow(),
             ChatInput(
               onSend: _handleSendMessage,
               isLoading: _isLoading,
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildQuickActionsRow() {
+    final actions = [
+      '📊 Analyze Spending',
+      '💰 Saving Tips',
+      '🎯 Goal Advice',
+      '📈 Investment Analysis',
+      '⚠ Overspending Alert',
+      '📅 Monthly Summary'
+    ];
+
+    return Container(
+      height: 48,
+      margin: const EdgeInsets.only(bottom: 8),
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+        scrollDirection: Axis.horizontal,
+        itemCount: actions.length,
+        separatorBuilder: (context, index) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final action = actions[index];
+          return ActionChip(
+            label: Text(action, style: const TextStyle(fontSize: 13, color: Colors.white)),
+            backgroundColor: AppColors.surfaceHighlight,
+            side: BorderSide(color: AppColors.border.withValues(alpha: 0.1)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            onPressed: () {
+              // Strip the emoji before sending
+              final prompt = action.substring(2).trim();
+              _handleSendMessage(prompt);
+            },
+          );
+        },
       ),
     );
   }
