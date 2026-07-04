@@ -212,7 +212,7 @@ class MonthlyPdfService {
       ),
     );
 
-    // PAGE 3+: PORTFOLIO & TRANSACTIONS
+    // PAGE 3: PORTFOLIO & CATEGORIES
     pdf.addPage(
       pw.MultiPage(
         theme: theme,
@@ -230,11 +230,74 @@ class MonthlyPdfService {
           _buildInvestmentsSection(investments, currencyFormatter),
           pw.SizedBox(height: 30),
           _buildCategoryAnalysis(transactions, currencyFormatter),
-          pw.SizedBox(height: 30),
-          _buildTransactionTable(transactions, currencyFormatter),
         ],
       ),
     );
+
+    // PAGE 4+: TRANSACTIONS
+    if (transactions.isEmpty) {
+      pdf.addPage(
+        pw.Page(
+          theme: theme,
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          build: (context) {
+            return pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                 _buildTransactionHeader(monthString, generatedDate),
+                 pw.SizedBox(height: 20),
+                 pw.Text("No transactions available.", style: const pw.TextStyle(color: PdfColors.grey600)),
+                 pw.Spacer(),
+                 _buildFooter(context.pageNumber, context.pagesCount, statementId),
+              ],
+            );
+          },
+        ),
+      );
+    } else {
+      final chunkSize = 25;
+      final chunks = <List<AppTransaction>>[];
+      for (var i = 0; i < transactions.length; i += chunkSize) {
+        chunks.add(transactions.sublist(
+            i, math.min(i + chunkSize, transactions.length)));
+      }
+
+      for (final chunk in chunks) {
+        pdf.addPage(
+          pw.Page(
+            theme: theme,
+            pageFormat: PdfPageFormat.a4,
+            margin: const pw.EdgeInsets.all(32),
+            build: (context) {
+              return pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  _buildTransactionHeader(monthString, generatedDate),
+                  pw.SizedBox(height: 20),
+                  pw.Container(
+                    padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                    decoration: const pw.BoxDecoration(color: PdfColors.black),
+                    child: pw.Row(
+                      children: [
+                        pw.Expanded(flex: 2, child: pw.Text('Date', style: pw.TextStyle(color: PdfColors.white, fontWeight: pw.FontWeight.bold, fontSize: 9))),
+                        pw.Expanded(flex: 3, child: pw.Text('Category', style: pw.TextStyle(color: PdfColors.white, fontWeight: pw.FontWeight.bold, fontSize: 9))),
+                        pw.Expanded(flex: 4, child: pw.Text('Description', style: pw.TextStyle(color: PdfColors.white, fontWeight: pw.FontWeight.bold, fontSize: 9))),
+                        pw.Expanded(flex: 2, child: pw.Text('Type', style: pw.TextStyle(color: PdfColors.white, fontWeight: pw.FontWeight.bold, fontSize: 9))),
+                        pw.Expanded(flex: 2, child: pw.Text('Amount', style: pw.TextStyle(color: PdfColors.white, fontWeight: pw.FontWeight.bold, fontSize: 9))),
+                      ],
+                    ),
+                  ),
+                  ...chunk.asMap().entries.map((entry) => _buildTransactionRow(entry.value, currencyFormatter, entry.key % 2 == 1)).toList(),
+                  pw.Spacer(),
+                  _buildFooter(context.pageNumber, context.pagesCount, statementId),
+                ],
+              );
+            },
+          ),
+        );
+      }
+    }
 
     return await pdf.save();
   }
@@ -727,44 +790,37 @@ class MonthlyPdfService {
         ]);
   }
 
-  pw.Widget _buildTransactionTable(
-      List<AppTransaction> transactions, NumberFormat fmt) {
-    if (transactions.isEmpty) {
-      return pw.Text('No transactions found for this period.',
-          style: const pw.TextStyle(color: PdfColors.grey600));
-    }
-
+  pw.Widget _buildTransactionHeader(String month, String generated) {
     return pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.start,
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text('SmartSpend AI', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: PdfColors.deepPurple900)),
+        pw.Text('Transaction Report', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+        pw.Text('Month: $month', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
+        pw.Text('Generated Date: $generated', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
+        pw.SizedBox(height: 10),
+        pw.Divider(color: PdfColors.deepPurple200, thickness: 1.5),
+      ],
+    );
+  }
+
+  pw.Widget _buildTransactionRow(AppTransaction tx, NumberFormat fmt, bool isOdd) {
+    return pw.Container(
+      padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+      decoration: pw.BoxDecoration(
+        color: isOdd ? PdfColors.grey100 : PdfColors.white,
+        border: const pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300, width: 0.5)),
+      ),
+      child: pw.Row(
         children: [
-          pw.Text('DETAILED TRANSACTIONS',
-              style: pw.TextStyle(
-                  fontSize: 14,
-                  fontWeight: pw.FontWeight.bold,
-                  color: PdfColors.black)),
-          pw.SizedBox(height: 10),
-          pw.TableHelper.fromTextArray(
-            headers: ['Date', 'Category', 'Description', 'Type', 'Amount'],
-            data: transactions
-                .map((t) => [
-                      DateFormat('dd MMM').format(t.createdAt),
-                      t.category ?? '-',
-                      t.title,
-                      t.type,
-                      fmt.format(t.amount)
-                    ])
-                .toList(),
-            headerStyle: pw.TextStyle(
-                color: PdfColors.white,
-                fontWeight: pw.FontWeight.bold,
-                fontSize: 9),
-            headerDecoration: const pw.BoxDecoration(color: PdfColors.black),
-            cellAlignment: pw.Alignment.centerLeft,
-            cellStyle: const pw.TextStyle(fontSize: 9),
-            cellPadding: const pw.EdgeInsets.all(6),
-            oddRowDecoration: const pw.BoxDecoration(color: PdfColors.grey100),
-          ),
-        ]);
+          pw.Expanded(flex: 2, child: pw.Text(DateFormat('dd MMM').format(tx.createdAt), style: const pw.TextStyle(fontSize: 9))),
+          pw.Expanded(flex: 3, child: pw.Text(tx.category ?? '-', style: const pw.TextStyle(fontSize: 9))),
+          pw.Expanded(flex: 4, child: pw.Text(tx.title, style: const pw.TextStyle(fontSize: 9))),
+          pw.Expanded(flex: 2, child: pw.Text(tx.type, style: const pw.TextStyle(fontSize: 9))),
+          pw.Expanded(flex: 2, child: pw.Text(fmt.format(tx.amount), style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
+        ],
+      ),
+    );
   }
 
   pw.Widget _statCard(String title, String value, PdfColor valueColor) {
