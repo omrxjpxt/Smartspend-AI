@@ -356,6 +356,14 @@ final currentMonthExpensesProvider = Provider<double>((ref) {
   });
 });
 
+// 8.3 Monthly Budget Provider (Derived from UserProfile)
+// Budget = monthlyIncome - monthlySavingsTarget
+final monthlyBudgetProvider = Provider<double>((ref) {
+  final profile = ref.watch(userProfileProvider).valueOrNull;
+  if (profile == null) return 0.0;
+  return profile.monthlyIncome - profile.monthlySavingsTarget;
+});
+
 // 9. Notifications Provider (Firebase Stream)
 final notificationsProvider = StreamProvider<List<AppNotification>>((ref) {
   final repository = ref.watch(notificationsRepositoryProvider);
