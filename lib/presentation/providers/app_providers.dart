@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/goal_contribution.dart';
 import '../../domain/entities/expense.dart';
@@ -40,93 +41,173 @@ final expensesProvider = Provider<AsyncValue<List<Expense>>>((ref) {
 final investmentsProvider = Provider<AsyncValue<List<Investment>>>((ref) {
   final transactionsAsync = ref.watch(allTransactionsProvider);
   return transactionsAsync.whenData((transactions) {
-    // 1. Filter relevant transactions
-    final investmentTxs = transactions.where((tx) =>
-        tx.type == 'Investment' ||
-        tx.type == 'Investment Purchase' ||
-        tx.type == 'Investment Sale').toList();
+      final investmentTxs = transactions.where((tx) =>
+          tx.type == 'Investment' ||
+          tx.type == 'Investment Purchase' ||
+          tx.type == 'Buy Investment' ||
+          tx.type == 'Investment Buy' ||
+          tx.type == 'Investment Sale' ||
+          tx.type == 'Sell Investment').toList();
 
-    // 2. Sort chronologically (oldest first)
-    investmentTxs.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+      investmentTxs.sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
-    // 3. Portfolio map keyed by symbol
-    final Map<String, Investment> portfolio = {};
-
-    for (final tx in investmentTxs) {
-      final isBuy = tx.type == 'Investment' || tx.type == 'Investment Purchase';
-      final symbol = tx.metadata?['symbol'] ?? tx.title;
-      final txQuantity = (tx.metadata?['quantity'] ?? 1.0).toDouble();
-      final txAmount = tx.amount;
-      final currentPrice = (tx.metadata?['currentPrice'] ?? (txAmount / (txQuantity > 0 ? txQuantity : 1))).toDouble();
-
-
-
-      if (isBuy) {
-        if (!portfolio.containsKey(symbol)) {
-          final purchasePricePerShare = (tx.metadata?['purchasePricePerShare'] ?? (txAmount / (txQuantity > 0 ? txQuantity : 1))).toDouble();
-          portfolio[symbol] = Investment(
-            id: symbol, // using symbol as unique ID since it aggregates many transactions
-            platform: tx.metadata?['platform'] ?? tx.category ?? 'Other',
-            investmentType: tx.metadata?['investmentType'] ?? 'Other',
-            assetName: tx.metadata?['assetName'] ?? tx.title, // use assetName if available, else title
-            symbol: symbol,
-            investedAmount: txAmount,
-            quantity: txQuantity,
-            purchasePricePerShare: purchasePricePerShare,
-            currentPrice: currentPrice,
-            purchaseDate: tx.createdAt,
-            notes: tx.metadata?['notes'],
-            createdAt: tx.createdAt,
-          );
-        } else {
-          final oldInv = portfolio[symbol]!;
-          final newQuantity = oldInv.quantity + txQuantity;
-          final newInvestedAmount = oldInv.investedAmount + txAmount;
-          final newAvgCost = newQuantity > 0 ? newInvestedAmount / newQuantity : 0.0;
-          
-          portfolio[symbol] = oldInv.copyWith(
-            quantity: newQuantity,
-            investedAmount: newInvestedAmount,
-            purchasePricePerShare: newAvgCost,
-            currentPrice: currentPrice,
-          );
+      // Group by symbol
+      final Map<String, List<dynamic>> txsBySymbol = {};
+      for (final tx in investmentTxs) {
+        final symbol = (tx.metadata?['symbol']?.toString() ?? tx.title).trim();
+        if (!txsBySymbol.containsKey(symbol)) {
+          txsBySymbol[symbol] = [];
         }
-      } else {
-        // SELL
-        if (portfolio.containsKey(symbol)) {
-          final oldInv = portfolio[symbol]!;
-          final newQuantity = oldInv.quantity - txQuantity;
-          
-          if (newQuantity <= 0.0001) {
-            // Full sell
-            portfolio[symbol] = oldInv.copyWith(
-              quantity: 0.0,
-              investedAmount: 0.0,
-              currentPrice: currentPrice,
-            );
-          } else {
-            // Partial sell - reduce invested amount via average cost basis
-            final sellRatio = txQuantity / oldInv.quantity;
-            final newInvestedAmount = oldInv.investedAmount - (oldInv.investedAmount * sellRatio);
-            
-            portfolio[symbol] = oldInv.copyWith(
-              quantity: newQuantity,
-              investedAmount: newInvestedAmount,
-              // Keep average purchase price unchanged
-              currentPrice: currentPrice,
-            );
+        txsBySymbol[symbol]!.add(tx);
+      }
+
+      final Map<String, Investment> portfolio = {};
+      debugPrint('\n========== INVESTMENT RECONCILIATION REPORT ==========\n');
+
+      for (final entry in txsBySymbol.entries) {
+        final symbol = entry.key;
+        final txs = entry.value;
+
+        debugPrint('Symbol: $symbol');
+        debugPrint('\nBUY TRANSACTIONS');
+        
+        double totalBuyQty = 0;
+        double totalSellQty = 0;
+        double netQty = 0;
+        double investedAmount = 0;
+        double avgCost = 0;
+        
+        bool hasBuy = false;
+        
+        // Print Buys
+        for (final tx in txs) {
+          final isBuy = tx.type != 'Investment Sale' && tx.type != 'Sell Investment';
+          if (isBuy) {
+            hasBuy = true;
+            final rawQty = tx.metadata?['quantity'];
+            final qty = (rawQty is num ? rawQty.toDouble() : double.tryParse(rawQty?.toString() ?? '') ?? 1.0);
+            final price = tx.metadata?['purchasePricePerShare'] ?? (tx.amount / (qty > 0 ? qty : 1.0));
+            debugPrint('- Qty: $qty\n  Price: ₹$price\n  Date: ${tx.createdAt}');
           }
         }
-      }
-    }
+        
+        debugPrint('\nSELL TRANSACTIONS');
+        // Print Sells
+        for (final tx in txs) {
+          final isBuy = tx.type != 'Investment Sale' && tx.type != 'Sell Investment';
+          if (!isBuy) {
+            if (!hasBuy) {
+              debugPrint('⚠️ WARNING: SELL occurred before any BUY history for $symbol!');
+            }
+            final rawQty = tx.metadata?['quantity'];
+            final qty = (rawQty is num ? rawQty.toDouble() : double.tryParse(rawQty?.toString() ?? '') ?? 1.0);
+            final price = tx.metadata?['currentPrice'] ?? (tx.amount / (qty > 0 ? qty : 1.0));
+            debugPrint('- Qty: $qty\n  Price: ₹$price\n  Date: ${tx.createdAt}');
+          }
+        }
+        
+        debugPrint('\n---------------------------------');
 
-    // 4. Return only active holdings (quantity > 0)
-    final holdings = portfolio.values.where((inv) => inv.quantity > 0.0001).toList();
-    
-    // Sort by largest value first
-    holdings.sort((a, b) => b.currentValue.compareTo(a.currentValue));
-    
-    return holdings;
+        // Process engine
+        Investment? currentHolding;
+        for (final tx in txs) {
+          final isBuy = tx.type != 'Investment Sale' && tx.type != 'Sell Investment';
+          final rawQty = tx.metadata?['quantity'];
+          final txQuantity = (rawQty is num ? rawQty.toDouble() : double.tryParse(rawQty?.toString() ?? '') ?? 1.0);
+          final txAmount = tx.amount;
+          final rawCurrentPrice = tx.metadata?['currentPrice'];
+          final currentTxPrice = (rawCurrentPrice is num 
+              ? rawCurrentPrice.toDouble() 
+              : double.tryParse(rawCurrentPrice?.toString() ?? '') ?? (txAmount / (txQuantity > 0 ? txQuantity : 1.0)));
+
+          if (isBuy) {
+            totalBuyQty += txQuantity;
+            if (currentHolding == null) {
+              final rawPurchasePrice = tx.metadata?['purchasePricePerShare'];
+              final purchasePricePerShare = (rawPurchasePrice is num 
+                  ? rawPurchasePrice.toDouble() 
+                  : double.tryParse(rawPurchasePrice?.toString() ?? '') ?? (txAmount / (txQuantity > 0 ? txQuantity : 1.0)));
+                  
+              currentHolding = Investment(
+                id: symbol,
+                platform: (tx.metadata?['platform']?.toString() ?? tx.category ?? 'Other'),
+                investmentType: (tx.metadata?['investmentType']?.toString() ?? 'Other'),
+                assetName: (tx.metadata?['assetName']?.toString() ?? tx.title),
+                symbol: symbol,
+                investedAmount: txAmount,
+                quantity: txQuantity,
+                purchasePricePerShare: purchasePricePerShare,
+                currentPrice: currentTxPrice,
+                purchaseDate: tx.createdAt,
+                notes: tx.metadata?['notes']?.toString(),
+                createdAt: tx.createdAt,
+              );
+            } else {
+              final newQuantity = currentHolding.quantity + txQuantity;
+              final newInvestedAmount = currentHolding.investedAmount + txAmount;
+              final newAvgCost = newQuantity > 0 ? newInvestedAmount / newQuantity : 0.0;
+              
+              currentHolding = currentHolding.copyWith(
+                quantity: newQuantity,
+                investedAmount: newInvestedAmount,
+                purchasePricePerShare: newAvgCost,
+                currentPrice: currentTxPrice,
+              );
+            }
+            netQty = currentHolding.quantity;
+            investedAmount = currentHolding.investedAmount;
+            avgCost = currentHolding.purchasePricePerShare;
+          } else {
+            // SELL
+            totalSellQty += txQuantity;
+            if (currentHolding != null) {
+              final newQuantity = currentHolding.quantity - txQuantity;
+              if (newQuantity < -0.0001) {
+                debugPrint('⚠️ WARNING: Quantity became negative (${newQuantity.toStringAsFixed(2)})! Ledger might have duplicate sells or missing buys.');
+              }
+              
+              if (newQuantity <= 0.0001) {
+                currentHolding = currentHolding.copyWith(
+                  quantity: 0.0,
+                  investedAmount: 0.0,
+                  currentPrice: currentTxPrice,
+                );
+              } else {
+                final sellRatio = txQuantity / currentHolding.quantity;
+                final newInvestedAmount = currentHolding.investedAmount - (currentHolding.investedAmount * sellRatio);
+                
+                currentHolding = currentHolding.copyWith(
+                  quantity: newQuantity,
+                  investedAmount: newInvestedAmount,
+                  currentPrice: currentTxPrice,
+                );
+              }
+              netQty = currentHolding.quantity;
+              investedAmount = currentHolding.investedAmount;
+            }
+          }
+        }
+
+        debugPrint('\nTOTAL BUY QUANTITY\n$totalBuyQty');
+        debugPrint('\nTOTAL SELL QUANTITY\n$totalSellQty');
+        debugPrint('\nNET QUANTITY\n$netQty');
+        debugPrint('\nAVERAGE COST\n₹$avgCost');
+        debugPrint('\nINVESTED AMOUNT\n₹$investedAmount');
+        debugPrint('\nFINAL DECISION');
+        
+        if (currentHolding != null && currentHolding.quantity > 0.0001) {
+          portfolio[symbol] = currentHolding;
+          debugPrint('Active in portfolio with ${currentHolding.quantity} units.');
+        } else {
+          debugPrint('Hidden from portfolio because quantity is zero.');
+        }
+        
+        debugPrint('\n==================================================\n');
+      }
+
+      final holdings = portfolio.values.where((inv) => inv.quantity > 0.0001).toList();
+      holdings.sort((a, b) => b.currentValue.compareTo(a.currentValue));
+      return holdings;
   });
 });
 
