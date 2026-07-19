@@ -23,6 +23,7 @@ import '../../presentation/expenses/expenses_history_screen.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../presentation/auth/login_screen.dart';
 import '../../presentation/auth/signup_screen.dart';
+import '../../presentation/auth/forgot_password_screen.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -50,7 +51,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final authState = ref.read(authStateProvider);
       final userProfileAsync = ref.read(userProfileProvider);
 
-      final isAuthScreen = state.uri.toString() == '/login' || state.uri.toString() == '/signup';
+      final isAuthScreen = state.uri.toString() == '/login' ||
+          state.uri.toString() == '/signup' ||
+          state.uri.toString() == '/forgot-password';
       final isGoingToOnboarding = state.uri.toString() == '/onboarding';
 
       return authState.when(
@@ -120,6 +123,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/signup',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const SignupScreen(),
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const ForgotPasswordScreen(),
       ),
       GoRoute(
         path: '/onboarding',
