@@ -372,4 +372,129 @@ Recommendations
 
     return score.clamp(0, 100);
   }
+
+  Future<Map<String, dynamic>> generateDashboardInsights() async {
+    final txs = _getTransactions();
+    if (txs.isEmpty) {
+      return {'isEmpty': true};
+    }
+
+    final now = DateTime.now();
+    double received = 0;
+    double expenses = 0;
+    double investments = 0;
+    double goals = 0;
+    
+    final categories = <String, double>{};
+    
+    // Monthly Budget from Profile
+    final profile = ref.read(userProfileProvider).valueOrNull;
+    final monthlyIncome = profile?.monthlyIncome ?? 0;
+    final monthlySavingsTarget = profile?.monthlySavingsTarget ?? 0;
+    final budget = monthlyIncome - monthlySavingsTarget;
+
+    for (var tx in txs) {
+      if (tx.createdAt.month == now.month && tx.createdAt.year == now.year) {
+        if (tx.type == 'Income' || tx.type == 'Received') {
+          received += tx.amount;
+        } else if (tx.type == 'Expense') {
+          expenses += tx.amount;
+          final cat = tx.category ?? 'Uncategorized';
+          categories[cat] = (categories[cat] ?? 0) + tx.amount;
+        } else if (tx.type == 'Investment Purchase' || tx.type == 'Investment') {
+          investments += tx.amount;
+        } else if (tx.type == 'Goal Contribution') {
+          goals += tx.amount;
+        }
+      }
+    }
+
+    final netSavings = received - expenses - investments - goals;
+    final savingsRate = received > 0 ? ((received - expenses) / received) : 0.0;
+    
+    var topCategory = 'None';
+    var maxSpend = 0.0;
+    categories.forEach((key, val) {
+      if (val > maxSpend) {
+        maxSpend = val;
+        topCategory = key;
+      }
+    });
+
+    final score = _calculateHealthScore(received, expenses, netSavings);
+    
+    String healthStatus;
+    if (score >= 80) healthStatus = 'Excellent';
+    else if (score >= 60) healthStatus = 'Good';
+    else if (score >= 40) healthStatus = 'Needs Attention';
+    else healthStatus = 'Critical';
+
+    String healthReason;
+    if (expenses > received && received > 0) {
+      healthReason = 'Spending exceeded your income this month.';
+    } else if (savingsRate >= 0.2) {
+      healthReason = 'You are saving a strong portion of your income.';
+    } else if (netSavings < 0) {
+      healthReason = 'Negative cash flow detected due to high outflows.';
+    } else if (score >= 80) {
+      healthReason = 'Your spending and saving balance is very healthy.';
+    } else {
+      healthReason = 'Your financial health is stable but has room to improve.';
+    }
+
+    String todayInsight;
+    if (budget > 0 && expenses > budget) {
+      todayInsight = 'You have exceeded your monthly budget by ${_format(expenses - budget)}.';
+    } else if (maxSpend > 0 && expenses > 0 && (maxSpend / expenses) > 0.4) {
+      final pct = ((maxSpend / expenses) * 100).toStringAsFixed(0);
+      todayInsight = '$topCategory accounts for $pct% of your expenses this month.';
+    } else if (budget > 0 && expenses <= budget) {
+      todayInsight = 'You still have ${_format(budget - expenses)} available in your monthly budget.';
+    } else if (investments > 0) {
+      todayInsight = 'You have invested ${_format(investments)} this month. Keep it up!';
+    } else if (goals > 0) {
+      todayInsight = 'You have contributed ${_format(goals)} towards your goals this month.';
+    } else {
+      todayInsight = 'You spent ${_format(expenses)} so far this month.';
+    }
+
+    List<String> recommendations = [];
+    if (maxSpend > 0) {
+      recommendations.add('Reduce $topCategory spending by ${_format(maxSpend * 0.15)} to increase savings.');
+    }
+    if (netSavings > 0) {
+      recommendations.add('You can safely invest ${_format(netSavings)} this month.');
+    }
+    final allGoals = _getGoals();
+    if (allGoals.isNotEmpty) {
+      final activeGoals = allGoals.where((g) => g.currentAmount < g.targetAmount).toList();
+      if (activeGoals.isNotEmpty) {
+        activeGoals.sort((a, b) => b.progress.compareTo(a.progress));
+        recommendations.add('You are on track to achieve your ${activeGoals.first.title} goal.');
+      }
+    }
+    if (recommendations.isEmpty) {
+      recommendations.add('Start setting financial goals to receive targeted advice.');
+      recommendations.add('Log your daily expenses to uncover spending patterns.');
+    }
+
+    return {
+      'isEmpty': false,
+      'score': score,
+      'healthStatus': healthStatus,
+      'healthReason': healthReason,
+      'todayInsight': todayInsight,
+      'recommendations': recommendations.take(3).toList(),
+      'snapshot': {
+        'Income': _format(received),
+        'Expenses': _format(expenses),
+        'Goal Savings': _format(goals),
+        'Investments': _format(investments),
+        'Net Cash Flow': _format(netSavings),
+        'Savings Rate': '${(savingsRate * 100).toStringAsFixed(1)}%',
+        'Largest Expense': topCategory,
+      }
+    };
+  }
 }
+

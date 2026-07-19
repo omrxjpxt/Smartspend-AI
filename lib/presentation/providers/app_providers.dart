@@ -14,6 +14,7 @@ import '../../data/repositories/user_profile_repository.dart';
 import '../../domain/entities/balance_transaction.dart';
 import '../../domain/entities/app_notification.dart';
 import '../../data/repositories/transactions_repository.dart';
+import '../../services/local_intelligence_engine.dart';
 
 // 1. Expenses Provider (Derived from Ledger)
 final expensesProvider = Provider<AsyncValue<List<Expense>>>((ref) {
@@ -446,3 +447,9 @@ final aiInsightsProvider = Provider<AsyncValue<List<Insight>>>((ref) {
   return AsyncValue.data(insights);
 });
 
+// 11. AI Dashboard Provider
+final aiDashboardProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+  ref.watch(allTransactionsProvider);
+  final engine = ref.read(localIntelligenceProvider);
+  return engine.generateDashboardInsights();
+});
