@@ -168,7 +168,7 @@ final balanceTransactionsProvider = Provider<AsyncValue<List<BalanceTransaction>
 final availableBalanceProvider = Provider<double>((ref) {
   final transactions = ref.watch(allTransactionsProvider).valueOrNull ?? [];
   return transactions.fold(0.0, (sum, tx) {
-    if (tx.type == 'Income' || tx.type == 'Received') return sum + tx.amount;
+    if (tx.type == 'Income' || tx.type == 'Received' || tx.type == 'Balance Added') return sum + tx.amount;
     if (tx.type == 'Expense') return sum - tx.amount;
     if (tx.type == 'Investment Sale') return sum + tx.amount;
     if (tx.type == 'Investment Purchase' || tx.type == 'Investment') return sum - tx.amount;
@@ -182,7 +182,7 @@ final currentMonthReceivedProvider = Provider<double>((ref) {
   final transactions = ref.watch(allTransactionsProvider).valueOrNull ?? [];
   final now = DateTime.now();
   return transactions.fold(0.0, (sum, tx) {
-    if ((tx.type == 'Income' || tx.type == 'Received') && 
+    if ((tx.type == 'Income' || tx.type == 'Received' || tx.type == 'Balance Added') && 
         tx.createdAt.month == now.month && 
         tx.createdAt.year == now.year) {
       return sum + tx.amount;
