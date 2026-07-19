@@ -3,6 +3,9 @@ import '../domain/interfaces/ai_provider.dart';
 import '../data/providers/disabled_ai_provider.dart';
 import 'local_intelligence_engine.dart';
 import 'dart:async';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../data/providers/gemini_ai_provider.dart';
+import 'ai_router.dart';
 
 class AiCooldownNotifier extends StateNotifier<int> {
   Timer? _timer;
@@ -40,7 +43,12 @@ class AiService {
   late final LocalIntelligenceEngine _localEngine;
 
   AiService(this.ref) {
-    _aiProvider = DisabledAIProvider();
+    final apiKey = dotenv.env['GEMINI_API_KEY'];
+    if (apiKey != null && apiKey.isNotEmpty) {
+      _aiProvider = GeminiAIProvider(apiKey);
+    } else {
+      _aiProvider = DisabledAIProvider();
+    }
     _localEngine = ref.read(localIntelligenceProvider);
   }
 
@@ -51,18 +59,33 @@ class AiService {
     dynamic ref,
     bool bypassRateLimit = false,
   }) async {
-    // 1. Try Local Engine first
-    final localResponse = await _localEngine.handleQuery(userPrompt);
-    if (localResponse != null) {
-      return localResponse;
+    // 1. Route the question
+    final route = AIRouter.route(userPrompt);
+
+    // 2. If local, use Local Engine
+    if (route == 'local') {
+      final localResponse = await _localEngine.handleQuery(userPrompt);
+      if (localResponse != null) {
+        return localResponse;
+      }
     }
 
-    // 2. Fallback to AI Provider
-    return await _aiProvider.generateResponse(
-      systemPrompt: systemPrompt,
-      context: context,
-      userPrompt: userPrompt,
-    );
+    // 3. If gemini (or local engine returned null), call Gemini
+    try {
+      return await _aiProvider.generateResponse(
+        systemPrompt: systemPrompt,
+        context: context,
+        userPrompt: userPrompt,
+      );
+    } catch (e) {
+      // 4. FALLBACK: If Gemini fails, fall back to Local Engine
+      final fallback = await _localEngine.handleQuery(userPrompt);
+      if (fallback != null) return fallback;
+
+      return "I'm having trouble generating an AI explanation right now. "
+             "Here's your financial summary:\n\n"
+             "${_localEngine.generateMonthlySummary()}";
+    }
   }
 
   Stream<String> generateChatStream({
@@ -74,42 +97,68 @@ class AiService {
     String lastUserMessage = "";
     if (chatHistory.isNotEmpty) {
       lastUserMessage = chatHistory.last.toString();
-      // Hack for dynamic objects coming from chat screen since Content is gone.
       if (chatHistory.last is Map) {
         lastUserMessage = (chatHistory.last as Map)['message'] ?? '';
       }
     }
 
-    final localResponse = await _localEngine.handleQuery(lastUserMessage);
-    if (localResponse != null) {
-      final chunks = localResponse.split('\n');
+    final route = AIRouter.route(lastUserMessage);
+
+    if (route == 'local') {
+      final localResponse = await _localEngine.handleQuery(lastUserMessage);
+      if (localResponse != null) {
+        final chunks = localResponse.split('\n');
+        for (var chunk in chunks) {
+          yield '$chunk\n';
+          await Future.delayed(const Duration(milliseconds: 100));
+        }
+        return;
+      }
+    }
+
+    try {
+      final response = await _aiProvider.generateResponse(
+        systemPrompt: systemPrompt,
+        context: context,
+        userPrompt: lastUserMessage,
+      );
+      
+      final chunks = response.split(' ');
+      for (var chunk in chunks) {
+        yield '$chunk ';
+        await Future.delayed(const Duration(milliseconds: 50));
+      }
+    } catch (e) {
+      final fallback = await _localEngine.handleQuery(lastUserMessage);
+      if (fallback != null) {
+        final chunks = fallback.split('\n');
+        for (var chunk in chunks) {
+          yield '$chunk\n';
+          await Future.delayed(const Duration(milliseconds: 100));
+        }
+        return;
+      }
+
+      final errorMsg = "I'm having trouble generating an AI explanation right now. "
+             "Here's your financial summary:\n\n"
+             "${_localEngine.generateMonthlySummary()}";
+      final chunks = errorMsg.split('\n');
       for (var chunk in chunks) {
         yield '$chunk\n';
         await Future.delayed(const Duration(milliseconds: 100));
       }
-      return;
-    }
-
-    final response = await _aiProvider.generateResponse(
-      systemPrompt: systemPrompt,
-      context: context,
-      userPrompt: lastUserMessage,
-    );
-    
-    final chunks = response.split(' ');
-    for (var chunk in chunks) {
-      yield '$chunk ';
-      await Future.delayed(const Duration(milliseconds: 50));
     }
   }
 
   Future<Map<String, dynamic>> validateAiConnection() async {
+    final hasKey = dotenv.env['GEMINI_API_KEY']?.isNotEmpty ?? false;
     return {
-      'apiKeyLoaded': false,
-      'connected': true,
-      'model': 'Local Intelligence Engine',
+      'apiKeyLoaded': hasKey,
+      'connected': hasKey,
+      'model': hasKey ? 'Gemini 2.0 Flash' : 'Local Intelligence Engine',
       'success': true,
-      'message': 'Connected to local deterministic engine.',
+      'message': hasKey ? 'Connected to Gemini API.' : 'Connected to local deterministic engine.',
     };
   }
 }
+

@@ -13,6 +13,12 @@ final financialContextProvider = Provider<String>((ref) {
   
   final now = DateTime.now();
   final currentMonthReceived = ref.watch(currentMonthReceivedProvider);
+  final monthlyBudget = ref.watch(monthlyBudgetProvider);
+  
+  final aiDashboard = ref.watch(aiDashboardProvider).valueOrNull;
+  final healthScore = aiDashboard?['score'] ?? 50;
+  final netCashFlow = aiDashboard?['snapshot']?['Net Cash Flow'] ?? '₹0';
+  final savingsRateStr = aiDashboard?['snapshot']?['Savings Rate'] ?? '0%';
   
   final monthlyExpenses = expenses
       .where((e) => e.date.month == now.month && e.date.year == now.year)
@@ -40,8 +46,15 @@ final financialContextProvider = Provider<String>((ref) {
       rawCategories[e.category] = (rawCategories[e.category] ?? 0) + e.amount;
     }
   }
+  
+  var topCategory = 'None';
+  var maxSpend = 0.0;
   rawCategories.forEach((key, value) {
     expenseCategories[key] = CurrencyFormatter.format(value);
+    if (value > maxSpend) {
+      maxSpend = value;
+      topCategory = key;
+    }
   });
 
   final recentTransactions = transactions.take(5).map((t) => {
@@ -55,11 +68,17 @@ final financialContextProvider = Provider<String>((ref) {
     "availableBalance": CurrencyFormatter.format(availableBalance),
     "monthlyIncome": CurrencyFormatter.format(currentMonthReceived),
     "monthlyExpenses": CurrencyFormatter.format(monthlyExpenses),
+    "monthlyBudget": monthlyBudget != null ? CurrencyFormatter.format(monthlyBudget) : "Not Set",
     "monthlySavings": CurrencyFormatter.format(monthlySavings),
+    "savingsRate": savingsRateStr,
+    "healthScore": healthScore,
+    "cashFlow": netCashFlow,
+    "largestExpense": topCategory,
     "activeGoals": activeGoals,
     "investments": investmentsList,
     "expenseCategories": expenseCategories,
     "recentTransactions": recentTransactions,
+    "recommendations": aiDashboard?['recommendations'] ?? [],
   };
   
   return const JsonEncoder.withIndent('  ').convert(contextMap);
