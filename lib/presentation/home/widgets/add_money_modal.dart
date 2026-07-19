@@ -4,8 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
-import '../../../domain/entities/balance_transaction.dart';
-import '../../../data/repositories/balance_repository.dart';
 import '../../../data/repositories/transactions_repository.dart';
 import '../../../data/repositories/user_profile_repository.dart';
 
@@ -78,25 +76,17 @@ class _AddMoneyModalState extends ConsumerState<AddMoneyModal> {
     try {
       final note = _noteController.text.trim();
 
-      // 1. Add Balance Transaction
-      await ref.read(balanceRepositoryProvider).addBalanceTransaction(
-        BalanceTransaction(
-          id: '',
-          amount: amount,
-          source: _selectedSource,
-          type: 'add',
-          note: note.isNotEmpty ? note : null,
-          timestamp: _selectedDate,
-        ),
-      );
-
-      // 2. Add App Transaction (Recent Activity)
+      // Add App Transaction (Recent Activity & Ledger)
       await ref.read(transactionsRepositoryProvider).addTransaction(
-        type: 'Income',
+        type: 'Balance Added', // Unified type for balance additions
         title: note.isNotEmpty ? note : _selectedSource,
         amount: amount,
         category: _selectedSource,
         dateOverride: _selectedDate,
+        metadata: {
+          'source': _selectedSource,
+          'note': note,
+        }
       );
 
       // 3. Update User Profile Monthly Income

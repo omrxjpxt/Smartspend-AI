@@ -22,7 +22,7 @@ class Intent {
 }
 
 class LocalIntelligenceEngine {
-  final ProviderRef ref;
+  final Ref ref;
   final currencyFormatter = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
 
   LocalIntelligenceEngine(this.ref);
@@ -192,14 +192,14 @@ Try to push your savings rate to 20% by cutting back on non-essential categories
     final goal = activeGoals.first;
     
     final remaining = goal.targetAmount - goal.currentAmount;
-
+    
     // Calculate average monthly contribution based on transactions
     final txs = _getTransactions().where((t) => t.type == 'Goal Contribution' && t.title == goal.title).toList();
     double avgMonthly = 0.0;
     if (txs.isNotEmpty) {
       final totalContrib = txs.fold(0.0, (sum, t) => sum + t.amount);
       // Rough estimation: if 1 transaction, assume that's the monthly rate
-      avgMonthly = totalContrib / (txs.length > 0 ? txs.length : 1); 
+      avgMonthly = totalContrib / (txs.isNotEmpty ? txs.length : 1); 
     }
     
     // Default fallback if no contributions logged

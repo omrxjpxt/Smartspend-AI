@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../domain/entities/goal.dart';
-import '../../../data/repositories/goals_repository.dart';
+import '../../../data/repositories/transactions_repository.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 
@@ -26,10 +26,14 @@ class _AddContributionModalState extends ConsumerState<AddContributionModal> {
       setState(() => _isSaving = true);
 
       try {
-        await ref.read(goalsRepositoryProvider).addContribution(
-          goalId: widget.goal.id,
-          currentSavedAmount: widget.goal.currentAmount,
-          contributionAmount: _contributionAmount,
+        // ONE ledger write is all that's needed.
+        // goalContributionsProvider & goalsProvider both derive from allTransactionsProvider.
+        await ref.read(transactionsRepositoryProvider).addTransaction(
+          type: 'Goal Contribution',
+          title: 'Contribution to ${widget.goal.title}',
+          amount: _contributionAmount,
+          category: 'Goals',
+          referenceId: widget.goal.id,
         );
         if (mounted) {
           Navigator.pop(context);

@@ -593,7 +593,6 @@ class MonthlyPdfService {
               color: PdfColors.black)),
       pw.SizedBox(height: 10),
       ...goals.map((g) {
-        final remaining = g.targetAmount - g.currentAmount;
         final progressPercent =
             (g.progress.clamp(0.0, 1.0) * 100).toStringAsFixed(0);
 

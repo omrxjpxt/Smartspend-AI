@@ -1,16 +1,55 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../domain/entities/app_transaction.dart';
+import '../../../data/repositories/transactions_repository.dart';
 
-class TransactionDetailsModal extends StatelessWidget {
+class TransactionDetailsModal extends ConsumerWidget {
   final AppTransaction transaction;
 
   const TransactionDetailsModal({super.key, required this.transaction});
 
+  Future<void> _deleteTransaction(BuildContext context, WidgetRef ref) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surfaceHighlight,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Delete Transaction?', style: TextStyle(color: Colors.white)),
+        content: const Text('This action cannot be undone.', style: TextStyle(color: AppColors.textSecondary)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.negative),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await ref.read(transactionsRepositoryProvider).deleteTransaction(transaction.id);
+        if (context.mounted) {
+          Navigator.pop(context); // Close the modal on success
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Transaction deleted successfully.')));
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to delete: $e')));
+        }
+      }
+    }
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final currencyFormatter = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
     final dateFormatter = DateFormat('MMM d, yyyy');
     final timeFormatter = DateFormat('h:mm a');
@@ -39,9 +78,15 @@ class TransactionDetailsModal extends StatelessWidget {
         prefix = '+';
         break;
       case 'Investment':
+      case 'Investment Purchase':
         icon = Icons.trending_up;
         color = AppColors.accentAI;
         prefix = '-';
+        break;
+      case 'Investment Sale':
+        icon = Icons.trending_down;
+        color = AppColors.positive;
+        prefix = '+';
         break;
       case 'Goal Contribution':
         icon = Icons.flag;
@@ -100,6 +145,10 @@ class TransactionDetailsModal extends StatelessWidget {
                       ),
                 ),
               ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline, color: AppColors.negative),
+                onPressed: () => _deleteTransaction(context, ref),
+              ),
             ],
           ),
           const SizedBox(height: AppSpacing.xxl),
@@ -139,3 +188,4 @@ class TransactionDetailsModal extends StatelessWidget {
     );
   }
 }
+

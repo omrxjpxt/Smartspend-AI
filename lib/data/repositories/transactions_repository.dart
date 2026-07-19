@@ -55,6 +55,7 @@ class TransactionsRepository {
     String? category,
     String? referenceId,
     DateTime? dateOverride,
+    Map<String, dynamic>? metadata,
   }) async {
     final date = dateOverride ?? DateTime.now();
     final monthKey = generateMonthKey(date);
@@ -67,7 +68,44 @@ class TransactionsRepository {
       if (referenceId != null) 'referenceId': referenceId,
       'createdAt': Timestamp.fromDate(date),
       'monthKey': monthKey,
+      if (metadata != null) 'metadata': metadata,
     });
+  }
+
+  Future<void> deleteTransaction(String id) async {
+    // Simply delete from the ledger. Because all providers derive from
+    // allTransactionsProvider, the UI updates automatically.
+    await _transactionsRef.doc(id).delete();
+  }
+
+  /// Deletes a goal document AND every Goal Contribution transaction
+  /// that references it, restoring Available Balance automatically.
+  Future<void> deleteGoalAndContributions(String goalId) async {
+    // Fetch all contributions for this goal from the ledger
+    final snapshot = await _transactionsRef
+        .where('type', isEqualTo: 'Goal Contribution')
+        .where('referenceId', isEqualTo: goalId)
+        .get();
+
+    // Firestore batch supports up to 500 ops; chunk if needed
+    const int batchLimit = 499;
+    final List<List<QueryDocumentSnapshot>> chunks = [];
+    for (int i = 0; i < snapshot.docs.length; i += batchLimit) {
+      chunks.add(snapshot.docs.sublist(
+        i, i + batchLimit > snapshot.docs.length ? snapshot.docs.length : i + batchLimit,
+      ));
+    }
+
+    for (final chunk in chunks) {
+      final batch = _firestore.batch();
+      for (final doc in chunk) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+    }
+
+    // Finally delete the goal document itself
+    await _firestore.collection('users').doc(userId).collection('goals').doc(goalId).delete();
   }
 
   Future<void> runDataMigration() async {

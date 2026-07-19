@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../../domain/entities/investment.dart';
 import '../../../../domain/entities/investment_transaction.dart';
-import '../../../../data/repositories/investments_repository.dart';
 import '../../../../data/repositories/transactions_repository.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -92,26 +91,22 @@ class _AddInvestmentModalState extends ConsumerState<AddInvestmentModal> {
       debugPrint('profitLoss: ${investment.profitLoss}');
       debugPrint('profitLossPercent: ${investment.profitLossPercent}%');
       
-      await ref.read(investmentsRepositoryProvider).createInvestment(investment);
-      
-      final transaction = InvestmentTransaction(
-        id: '',
-        action: 'BUY',
-        assetName: _assetName,
-        platform: _platform,
-        amount: _investedAmount,
-        quantity: _quantity,
-        timestamp: DateTime.now(),
-      );
-      await ref.read(investmentsRepositoryProvider).logInvestmentTransaction(transaction);
-      
-      // Auto-log to global transactions
+      // Auto-log to global transactions with metadata
       await ref.read(transactionsRepositoryProvider).addTransaction(
-        type: 'Investment',
+        type: 'Investment Purchase', // Use standard type
         title: _assetName,
         amount: _investedAmount,
         category: _platform,
         dateOverride: _purchaseDate,
+        metadata: {
+          'platform': _platform,
+          'investmentType': _investmentType,
+          'symbol': investment.symbol,
+          'quantity': _quantity,
+          'purchasePricePerShare': purchasePricePerShare,
+          'currentPrice': currentPrice,
+          'notes': _notes,
+        },
       );
 
       if (mounted) Navigator.pop(context);

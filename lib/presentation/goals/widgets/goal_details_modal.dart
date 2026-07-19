@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../domain/entities/goal.dart';
-import '../../../data/repositories/goals_repository.dart';
+import '../../../data/repositories/transactions_repository.dart';
 import '../../providers/app_providers.dart';
 import 'add_contribution_modal.dart';
 
@@ -18,7 +18,6 @@ class GoalDetailsModal extends ConsumerStatefulWidget {
 }
 
 class _GoalDetailsModalState extends ConsumerState<GoalDetailsModal> {
-  bool _isDeleting = false;
 
   Future<void> _deleteGoal() async {
     final confirm = await showDialog<bool>(
@@ -47,10 +46,9 @@ class _GoalDetailsModalState extends ConsumerState<GoalDetailsModal> {
 
     if (confirm != true) return;
 
-    setState(() => _isDeleting = true);
-
     try {
-      await ref.read(goalsRepositoryProvider).deleteGoal(widget.goal.id);
+      // Deletes goal doc + all contribution transactions → balance auto-restores
+      await ref.read(transactionsRepositoryProvider).deleteGoalAndContributions(widget.goal.id);
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -63,8 +61,6 @@ class _GoalDetailsModalState extends ConsumerState<GoalDetailsModal> {
           const SnackBar(content: Text('Unable to delete. Please try again.')),
         );
       }
-    } finally {
-      if (mounted) setState(() => _isDeleting = false);
     }
   }
 

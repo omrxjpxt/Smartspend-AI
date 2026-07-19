@@ -17,7 +17,6 @@ class GoalsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final goals = ref.watch(goalsProvider);
     final currencyFormatter = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
-    final dateFormatter = DateFormat('MMM yyyy');
 
     return Scaffold(
       backgroundColor: AppColors.background,

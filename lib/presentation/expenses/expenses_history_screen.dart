@@ -6,7 +6,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../design_system/components/premium_card.dart';
 import '../../domain/entities/expense.dart';
-import '../../data/repositories/expenses_repository.dart';
+import '../../data/repositories/transactions_repository.dart';
 
 class ExpensesHistoryScreen extends ConsumerStatefulWidget {
   const ExpensesHistoryScreen({super.key});
@@ -86,7 +86,7 @@ class _ExpensesHistoryScreenState extends ConsumerState<ExpensesHistoryScreen> {
 
     if (confirm == true) {
       try {
-        await ref.read(expensesRepositoryProvider).deleteExpense(expense.id);
+        await ref.read(transactionsRepositoryProvider).deleteTransaction(expense.id);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Expense deleted')));
         }

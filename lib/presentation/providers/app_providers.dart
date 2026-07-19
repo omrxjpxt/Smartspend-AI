@@ -8,34 +8,76 @@ import '../../domain/entities/user_profile.dart';
 import '../../domain/entities/insight.dart';
 import '../../domain/entities/goal.dart';
 import '../../data/repositories/goals_repository.dart';
-import '../../data/repositories/investments_repository.dart';
-import '../../data/repositories/expenses_repository.dart';
-import '../../data/repositories/balance_repository.dart';
 import '../../data/repositories/notifications_repository.dart';
 import '../../data/repositories/user_profile_repository.dart';
 import '../../domain/entities/balance_transaction.dart';
 import '../../domain/entities/app_notification.dart';
 import '../../data/repositories/transactions_repository.dart';
 
-// 1. Expenses Provider (Firebase Stream)
-final expensesProvider = StreamProvider<List<Expense>>((ref) {
-  final repository = ref.watch(expensesRepositoryProvider);
-  return repository.watchExpenses();
+// 1. Expenses Provider (Derived from Ledger)
+final expensesProvider = Provider<AsyncValue<List<Expense>>>((ref) {
+  final transactionsAsync = ref.watch(allTransactionsProvider);
+  
+  return transactionsAsync.whenData((transactions) {
+    return transactions
+        .where((tx) => tx.type == 'Expense')
+        .map((tx) => Expense(
+              id: tx.id,
+              amount: tx.amount,
+              category: tx.category ?? 'Other',
+              description: tx.title,
+              date: tx.createdAt,
+              createdAt: tx.createdAt,
+            ))
+        .toList();
+  });
 });
 
 // 2. Transactions Provider
 // Handled directly inside transactions_repository.dart via allTransactionsProvider
 
-// 3. Investments Provider (Firebase Stream)
-final investmentsProvider = StreamProvider<List<Investment>>((ref) {
-  final repository = ref.watch(investmentsRepositoryProvider);
-  return repository.watchInvestments();
+// 3. Investments Provider (Derived from Ledger)
+final investmentsProvider = Provider<AsyncValue<List<Investment>>>((ref) {
+  final transactionsAsync = ref.watch(allTransactionsProvider);
+  return transactionsAsync.whenData((transactions) {
+    return transactions
+        .where((tx) => tx.type == 'Investment' || tx.type == 'Investment Purchase')
+        .map((tx) => Investment(
+              id: tx.id,
+              platform: tx.metadata?['platform'] ?? tx.category ?? 'Other',
+              investmentType: tx.metadata?['investmentType'] ?? 'Other',
+              assetName: tx.title,
+              symbol: tx.metadata?['symbol'] ?? tx.title,
+              investedAmount: tx.amount,
+              quantity: (tx.metadata?['quantity'] ?? 1.0).toDouble(),
+              purchasePricePerShare: (tx.metadata?['purchasePricePerShare'] ?? tx.amount).toDouble(),
+              currentPrice: (tx.metadata?['currentPrice'] ?? tx.amount).toDouble(),
+              purchaseDate: tx.createdAt,
+              notes: tx.metadata?['notes'],
+              createdAt: tx.createdAt,
+            ))
+        .toList();
+  });
 });
 
-// 3.5 Investment Transactions Provider (Firebase Stream)
-final investmentTransactionsProvider = StreamProvider<List<InvestmentTransaction>>((ref) {
-  final repository = ref.watch(investmentsRepositoryProvider);
-  return repository.watchTransactions();
+// 3.5 Investment Transactions Provider (Derived from Ledger)
+final investmentTransactionsProvider = Provider<AsyncValue<List<InvestmentTransaction>>>((ref) {
+  final transactionsAsync = ref.watch(allTransactionsProvider);
+  return transactionsAsync.whenData((transactions) {
+    return transactions
+        .where((tx) => tx.type == 'Investment Purchase' || tx.type == 'Investment Sale' || tx.type == 'Investment')
+        .map((tx) => InvestmentTransaction(
+              id: tx.id,
+              action: tx.type == 'Investment Sale' ? 'SELL' : 'BUY',
+              assetName: tx.metadata?['assetName'] ?? tx.title,
+              platform: tx.metadata?['platform'] ?? 'Smartspend',
+              amount: tx.amount,
+              quantity: (tx.metadata?['quantity'] ?? 1.0).toDouble(),
+              timestamp: tx.createdAt,
+            ))
+        .toList();
+
+  });
 });
 
 // 4. Accounts Provider (Static for now)
@@ -47,9 +89,34 @@ final accountsProvider = StateProvider<List<Account>>((ref) {
 
 // ----- Goals & Budgets -----
 
-final goalsProvider = StreamProvider<List<Goal>>((ref) {
+// Raw goals from Firestore (metadata only — no financial values)
+final _rawGoalsProvider = StreamProvider<List<Goal>>((ref) {
   final repository = ref.watch(goalsRepositoryProvider);
   return repository.watchGoals();
+});
+
+// Goals Provider — computes currentAmount from the ledger dynamically
+final goalsProvider = Provider<AsyncValue<List<Goal>>>((ref) {
+  final rawGoalsAsync = ref.watch(_rawGoalsProvider);
+  final transactionsAsync = ref.watch(allTransactionsProvider);
+
+  if (rawGoalsAsync.isLoading || transactionsAsync.isLoading) {
+    return const AsyncValue.loading();
+  }
+  if (rawGoalsAsync.hasError) return AsyncValue.error(rawGoalsAsync.error!, rawGoalsAsync.stackTrace!);
+  if (transactionsAsync.hasError) return AsyncValue.error(transactionsAsync.error!, transactionsAsync.stackTrace!);
+
+  final rawGoals = rawGoalsAsync.valueOrNull ?? [];
+  final transactions = transactionsAsync.valueOrNull ?? [];
+
+  final enriched = rawGoals.map((goal) {
+    final contributed = transactions
+        .where((tx) => tx.type == 'Goal Contribution' && tx.referenceId == goal.id)
+        .fold(0.0, (sum, tx) => sum + tx.amount);
+    return goal.copyWith(currentAmount: contributed);
+  }).toList();
+
+  return AsyncValue.data(enriched);
 });
 
 final totalGoalSavingsProvider = Provider<double>((ref) {
@@ -57,9 +124,21 @@ final totalGoalSavingsProvider = Provider<double>((ref) {
   return goals.fold(0.0, (sum, goal) => sum + goal.currentAmount);
 });
 
-final goalContributionsProvider = StreamProvider.family<List<GoalContribution>, String>((ref, goalId) {
-  final repository = ref.watch(goalsRepositoryProvider);
-  return repository.watchGoalContributions(goalId);
+// Goal Contributions — derived from the ledger, filtered by goal ID
+final goalContributionsProvider = Provider.family<AsyncValue<List<GoalContribution>>, String>((ref, goalId) {
+  final transactionsAsync = ref.watch(allTransactionsProvider);
+  return transactionsAsync.whenData((transactions) {
+    return transactions
+        .where((tx) => tx.type == 'Goal Contribution' && tx.referenceId == goalId)
+        .map((tx) => GoalContribution(
+              id: tx.id,
+              goalId: goalId,
+              amount: tx.amount,
+              date: tx.createdAt,
+            ))
+        .toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+  });
 });
 
 // 6. User Profile Provider (Firebase Stream)
@@ -68,10 +147,21 @@ final userProfileProvider = StreamProvider<UserProfile?>((ref) {
   return repository.watchProfile();
 });
 
-// 7. Balance Transactions Provider (Firebase Stream)
-final balanceTransactionsProvider = StreamProvider<List<BalanceTransaction>>((ref) {
-  final repository = ref.watch(balanceRepositoryProvider);
-  return repository.watchBalanceTransactions();
+// 7. Balance Transactions Provider (Derived from Ledger)
+final balanceTransactionsProvider = Provider<AsyncValue<List<BalanceTransaction>>>((ref) {
+  final transactionsAsync = ref.watch(allTransactionsProvider);
+  return transactionsAsync.whenData((transactions) {
+    return transactions
+        .where((tx) => tx.type == 'Balance Added' || (tx.type == 'Expense' && tx.category == 'Balance'))
+        .map((tx) => BalanceTransaction(
+              id: tx.id,
+              amount: tx.amount,
+              type: tx.type == 'Balance Added' ? 'add' : 'remove',
+              source: tx.category ?? 'Other',
+              timestamp: tx.createdAt,
+            ))
+        .toList();
+  });
 });
 
 // 8. Available Balance Computed Provider (Historical Received - Historical Expenses)

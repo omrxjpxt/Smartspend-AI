@@ -35,7 +35,7 @@ final aiCooldownProvider = StateNotifierProvider<AiCooldownNotifier, int>((ref) 
 final aiServiceProvider = Provider((ref) => AiService(ref));
 
 class AiService {
-  final ProviderRef ref;
+  final Ref ref;
   late final AIProvider _aiProvider;
   late final LocalIntelligenceEngine _localEngine;
 
@@ -84,7 +84,7 @@ class AiService {
     if (localResponse != null) {
       final chunks = localResponse.split('\n');
       for (var chunk in chunks) {
-        yield chunk + '\n';
+        yield '$chunk\n';
         await Future.delayed(const Duration(milliseconds: 100));
       }
       return;
@@ -98,7 +98,7 @@ class AiService {
     
     final chunks = response.split(' ');
     for (var chunk in chunks) {
-      yield chunk + ' ';
+      yield '$chunk ';
       await Future.delayed(const Duration(milliseconds: 50));
     }
   }

@@ -9,6 +9,8 @@ import '../../core/theme/app_spacing.dart';
 import '../design_system/components/premium_card.dart';
 import '../../services/monthly_pdf_service.dart';
 import '../../domain/entities/app_transaction.dart';
+import '../../domain/entities/goal.dart';
+import '../../domain/entities/investment.dart';
 import '../../services/ai_service.dart';
 import '../../services/financial_context_builder.dart';
 import '../../core/constants/ai_prompts.dart';
@@ -56,8 +58,8 @@ class _TransactionHistoryScreenState extends ConsumerState<TransactionHistoryScr
       final userName = userProfile?.name ?? 'User';
       final userEmail = userProfile?.email ?? '';
 
-      final goals = await ref.read(goalsProvider.future);
-      final investments = await ref.read(investmentsProvider.future);
+      final List<Goal> goals = ref.read(goalsProvider).valueOrNull ?? <Goal>[];
+      final List<Investment> investments = ref.read(investmentsProvider).valueOrNull ?? <Investment>[];
 
       final contextData = ref.read(financialContextProvider);
       final aiService = ref.read(aiServiceProvider);

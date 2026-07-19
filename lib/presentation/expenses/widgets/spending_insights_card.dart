@@ -6,7 +6,6 @@ import '../../providers/app_providers.dart';
 import '../../design_system/components/premium_card.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
-import 'dart:math';
 
 class SpendingInsightsCard extends ConsumerWidget {
   const SpendingInsightsCard({super.key});

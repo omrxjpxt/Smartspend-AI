@@ -29,7 +29,6 @@ class _ChatSessionScreenState extends ConsumerState<ChatSessionScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _isLoading = false;
   String? _currentConversationId;
-  final bool _initialized = false;
 
   @override
   void initState() {

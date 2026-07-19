@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../domain/entities/investment.dart';
-import '../../../data/repositories/investments_repository.dart';
+import '../../../data/repositories/transactions_repository.dart';
 
 class InvestmentDetailsModal extends ConsumerStatefulWidget {
   final Investment investment;
@@ -56,8 +56,8 @@ class _InvestmentDetailsModalState
 
     try {
       await ref
-          .read(investmentsRepositoryProvider)
-          .deleteInvestment(widget.investment.id);
+          .read(transactionsRepositoryProvider)
+          .deleteTransaction(widget.investment.id);
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -353,17 +353,30 @@ class _InvestmentTransactionSheetState extends ConsumerState<_InvestmentTransact
     setState(() => _isLoading = true);
 
     try {
-      final repo = ref.read(investmentsRepositoryProvider);
-      if (widget.action == 'BUY') {
-        await repo.buyInvestment(widget.investment, quantity, amount, _selectedDate);
-      } else {
-        await repo.sellInvestment(widget.investment, quantity, amount, _selectedDate);
-      }
+      final isBuy = widget.action == 'BUY';
+      
+      // Auto-log to global transactions with metadata
+      await ref.read(transactionsRepositoryProvider).addTransaction(
+        type: isBuy ? 'Investment Purchase' : 'Investment Sale',
+        title: widget.investment.assetName,
+        amount: amount,
+        category: widget.investment.platform,
+        dateOverride: _selectedDate,
+        referenceId: widget.investment.id,
+        metadata: {
+          'platform': widget.investment.platform,
+          'investmentType': widget.investment.investmentType,
+          'symbol': widget.investment.symbol,
+          'quantity': quantity,
+          'purchasePricePerShare': amount / quantity,
+          'currentPrice': widget.investment.currentPrice,
+        },
+      );
       
       if (mounted) {
         widget.onSuccess();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${widget.action == 'BUY' ? 'Bought' : 'Sold'} successfully')),
+          SnackBar(content: Text('${isBuy ? 'Bought' : 'Sold'} successfully')),
         );
       }
     } catch (e) {

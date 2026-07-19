@@ -5,7 +5,6 @@ import '../data/repositories/transactions_repository.dart';
 import '../core/utils/currency_formatter.dart';
 
 final financialContextProvider = Provider<String>((ref) {
-  final userProfile = ref.watch(userProfileProvider).valueOrNull;
   final availableBalance = ref.watch(availableBalanceProvider);
   final expenses = ref.watch(expensesProvider).valueOrNull ?? [];
   final goals = ref.watch(goalsProvider).valueOrNull ?? [];

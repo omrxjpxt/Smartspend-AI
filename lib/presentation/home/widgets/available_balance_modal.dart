@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:uuid/uuid.dart';
 import '../../providers/app_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../design_system/components/premium_card.dart';
-import '../../../domain/entities/balance_transaction.dart';
-import '../../../data/repositories/balance_repository.dart';
 import '../../../data/repositories/transactions_repository.dart';
 
 class AvailableBalanceModal extends ConsumerStatefulWidget {
@@ -40,7 +37,6 @@ class _AvailableBalanceModalState extends ConsumerState<AvailableBalanceModal> {
     setState(() => _isSubmitting = true);
 
     try {
-      final balanceRepo = ref.read(balanceRepositoryProvider);
       final transactionsRepo = ref.read(transactionsRepositoryProvider);
       final currentBalance = ref.read(availableBalanceProvider);
 
@@ -64,23 +60,17 @@ class _AvailableBalanceModalState extends ConsumerState<AvailableBalanceModal> {
       // If it's removal or negative adjustment, ensure we track it properly (we can just store amount as positive and handle the 'type' in computation, or store as negative? The computation in app_providers checks type == 'add' || 'adjustment', else subtracts)
       final typeForDb = (finalType == 'adjustment_remove' || finalType == 'remove') ? 'remove' : 'add';
 
-      final transaction = BalanceTransaction(
-        id: const Uuid().v4(),
-        amount: finalAmount,
-        source: _selectedSource,
-        type: typeForDb,
-        note: _noteController.text.isNotEmpty ? _noteController.text : null,
-        timestamp: DateTime.now(),
-      );
-
-      await balanceRepo.addBalanceTransaction(transaction);
-
       // Log Activity to unified transactions
       await transactionsRepo.addTransaction(
-        type: 'Balance Added',
+        type: typeForDb == 'add' ? 'Balance Added' : 'Balance Removed',
         title: typeForDb == 'add' ? 'Added from $_selectedSource' : 'Removed from Balance',
         amount: finalAmount,
         category: _selectedSource,
+        metadata: {
+          'source': _selectedSource,
+          'note': _noteController.text.isNotEmpty ? _noteController.text : null,
+          'type': typeForDb,
+        }
       );
 
       if (mounted) {

@@ -7,6 +7,7 @@ class AppTransaction {
   final String? referenceId; // To link to original record if needed
   final DateTime createdAt;
   final String monthKey; // e.g. "2026-06"
+  final Map<String, dynamic>? metadata; // Added to hold entity-specific data (e.g. investment symbol, quantity)
 
   const AppTransaction({
     required this.id,
@@ -17,6 +18,7 @@ class AppTransaction {
     this.referenceId,
     required this.createdAt,
     required this.monthKey,
+    this.metadata,
   });
 
   factory AppTransaction.fromMap(Map<String, dynamic> map, String id) {
@@ -31,6 +33,7 @@ class AppTransaction {
           ? (map['createdAt'] as dynamic).toDate() 
           : DateTime.now(),
       monthKey: map['monthKey'] ?? '',
+      metadata: map['metadata'] as Map<String, dynamic>?,
     );
   }
 
@@ -43,6 +46,7 @@ class AppTransaction {
       if (referenceId != null) 'referenceId': referenceId,
       'createdAt': createdAt,
       'monthKey': monthKey,
+      if (metadata != null) 'metadata': metadata,
     };
   }
 }

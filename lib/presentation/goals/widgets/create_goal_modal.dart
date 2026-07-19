@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../domain/entities/goal.dart';
 import '../../../../data/repositories/goals_repository.dart';
+import '../../../../data/repositories/transactions_repository.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 
@@ -16,7 +17,7 @@ class _CreateGoalModalState extends ConsumerState<CreateGoalModal> {
   final _formKey = GlobalKey<FormState>();
   String _name = '';
   double _targetAmount = 0;
-  double _currentAmount = 0;
+  double _initialContribution = 0; // Stored as a ledger entry, NOT on the goal doc
   String _category = 'Gadget';
 
   final List<String> _categories = [
@@ -40,15 +41,30 @@ class _CreateGoalModalState extends ConsumerState<CreateGoalModal> {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
 
+      // Goal document stores only immutable metadata — no financial values
       final goal = Goal(
-        id: '', // Firestore will generate ID
+        id: '',
         title: _name,
         emoji: _getEmojiForCategory(_category),
-        currentAmount: _currentAmount,
+        currentAmount: 0, // Never stored in Firestore; computed from ledger
         targetAmount: _targetAmount,
       );
 
-      await ref.read(goalsRepositoryProvider).createGoal(goal);
+      // 1. Create the goal metadata document
+      // We need the Firestore-generated ID, so we intercept via the repo
+      final docRef = await ref.read(goalsRepositoryProvider).createGoalAndGetId(goal);
+
+      // 2. If there's an initial amount, record it as a ledger contribution
+      if (_initialContribution > 0) {
+        await ref.read(transactionsRepositoryProvider).addTransaction(
+          type: 'Goal Contribution',
+          title: 'Initial contribution to $_name',
+          amount: _initialContribution,
+          category: 'Goals',
+          referenceId: docRef, // Link to the goal ID
+        );
+      }
+
       if (mounted) Navigator.pop(context);
     }
   }
@@ -131,11 +147,13 @@ class _CreateGoalModalState extends ConsumerState<CreateGoalModal> {
               ),
               const SizedBox(height: AppSpacing.md),
 
-              // Current Saved Amount
+              // Initial Saved Amount → recorded in ledger, not stored on goal doc
               TextFormField(
                 decoration: InputDecoration(
-                  labelText: 'Current Saved Amount (Optional)',
+                  labelText: 'Already Saved (Optional)',
                   prefixText: '₹ ',
+                  helperText: 'Will be recorded as an opening contribution',
+                  helperStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
                   filled: true,
                   fillColor: AppColors.background,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
@@ -145,7 +163,7 @@ class _CreateGoalModalState extends ConsumerState<CreateGoalModal> {
                 keyboardType: TextInputType.number,
                 initialValue: '0',
                 validator: (val) => val == null || double.tryParse(val) == null ? 'Invalid amount' : null,
-                onSaved: (val) => _currentAmount = double.parse(val!),
+                onSaved: (val) => _initialContribution = double.parse(val!),
               ),
               const SizedBox(height: AppSpacing.xl),
 
@@ -168,4 +186,3 @@ class _CreateGoalModalState extends ConsumerState<CreateGoalModal> {
     );
   }
 }
-
