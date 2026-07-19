@@ -56,6 +56,7 @@ class AiService {
     required String systemPrompt, 
     required String context, 
     required String userPrompt, 
+    String? chatHistory,
     dynamic ref,
     bool bypassRateLimit = false,
   }) async {
@@ -72,9 +73,13 @@ class AiService {
 
     // 3. If gemini (or local engine returned null), call Gemini
     try {
+      final finalContext = chatHistory != null && chatHistory.isNotEmpty 
+          ? "$context\n\nChat History:\n$chatHistory" 
+          : context;
+          
       return await _aiProvider.generateResponse(
         systemPrompt: systemPrompt,
-        context: context,
+        context: finalContext,
         userPrompt: userPrompt,
       );
     } catch (e) {

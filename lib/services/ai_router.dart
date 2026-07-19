@@ -5,14 +5,24 @@ class AIRouter {
     'net worth', 'cash flow', 'health score',
   ];
 
-  /// Returns 'local' or 'gemini'
   static String route(String prompt) {
     final lower = prompt.toLowerCase();
     for (final keyword in _localKeywords) {
       if (lower.contains(keyword)) {
+        print("\n=========== AI ROUTER ===========");
+        print("Question:\n$prompt");
+        print("Selected Engine:\nLocal Engine");
+        print("Reason:\nMathematical Query (Matched keyword '$keyword')");
+        print("=================================\n");
         return 'local';
       }
     }
+    
+    print("\n=========== AI ROUTER ===========");
+    print("Question:\n$prompt");
+    print("Selected Engine:\nGemini");
+    print("Reason:\nAdvice Query (No mathematical keywords matched)");
+    print("=================================\n");
     return 'gemini';
   }
 }

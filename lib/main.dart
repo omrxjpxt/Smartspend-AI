@@ -12,6 +12,13 @@ void main() async {
   );
   try {
     await dotenv.load(fileName: ".env");
+    print("\nEnvironment Loaded");
+    final apiKey = dotenv.env['GEMINI_API_KEY'];
+    print("API Key Exists: ${apiKey != null && apiKey.trim().isNotEmpty}");
+    if (apiKey != null && apiKey.trim().isNotEmpty) {
+      print("API Key Length: ${apiKey.length}");
+      print("First 6 characters: ${apiKey.substring(0, 6)}");
+    }
   } catch (e) {
     debugPrint("Failed to load .env file: $e");
   }

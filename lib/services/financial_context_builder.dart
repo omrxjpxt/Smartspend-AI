@@ -81,5 +81,19 @@ final financialContextProvider = Provider<String>((ref) {
     "recommendations": aiDashboard?['recommendations'] ?? [],
   };
   
-  return const JsonEncoder.withIndent('  ').convert(contextMap);
+  final jsonContext = const JsonEncoder.withIndent('  ').convert(contextMap);
+  
+  print("\n=========== FINANCIAL CONTEXT ===========");
+  print("Monthly Income: ${contextMap['monthlyIncome']}");
+  print("Monthly Expense: ${contextMap['monthlyExpenses']}");
+  print("Monthly Budget: ${contextMap['monthlyBudget']}");
+  print("Savings Rate: ${contextMap['savingsRate']}");
+  print("Health Score: ${contextMap['healthScore']}");
+  print("Investments: ${contextMap['investments']}");
+  print("Goals: ${contextMap['activeGoals']}");
+  print("Largest Expense: ${contextMap['largestExpense']}");
+  print("Net Cash Flow: ${contextMap['cashFlow']}");
+  print("=========================================\n");
+
+  return jsonContext;
 });

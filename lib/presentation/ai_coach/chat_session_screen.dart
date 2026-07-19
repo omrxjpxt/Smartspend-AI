@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/constants/ai_prompts.dart';
@@ -97,10 +98,25 @@ class _ChatSessionScreenState extends ConsumerState<ChatSessionScreen> {
       Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
 
       // 3. Call AI
+      // Fetch chat history for memory
+      final messagesSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(chatRepo.userId)
+          .collection('aiConversations')
+          .doc(cid)
+          .collection('messages')
+          .orderBy('timestamp', descending: false)
+          .get();
+          
+      final history = messagesSnapshot.docs.map((doc) {
+        return "${doc['role']}: ${doc['message']}";
+      }).join('\n');
+
       final response = await aiService.generateInsight(
         systemPrompt: AiPrompts.systemPrompt,
         context: contextData,
         userPrompt: text.trim(),
+        chatHistory: history,
         ref: ref,
       );
 
