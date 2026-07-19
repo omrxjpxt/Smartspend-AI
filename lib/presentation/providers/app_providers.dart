@@ -40,23 +40,93 @@ final expensesProvider = Provider<AsyncValue<List<Expense>>>((ref) {
 final investmentsProvider = Provider<AsyncValue<List<Investment>>>((ref) {
   final transactionsAsync = ref.watch(allTransactionsProvider);
   return transactionsAsync.whenData((transactions) {
-    return transactions
-        .where((tx) => tx.type == 'Investment' || tx.type == 'Investment Purchase')
-        .map((tx) => Investment(
-              id: tx.id,
-              platform: tx.metadata?['platform'] ?? tx.category ?? 'Other',
-              investmentType: tx.metadata?['investmentType'] ?? 'Other',
-              assetName: tx.title,
-              symbol: tx.metadata?['symbol'] ?? tx.title,
-              investedAmount: tx.amount,
-              quantity: (tx.metadata?['quantity'] ?? 1.0).toDouble(),
-              purchasePricePerShare: (tx.metadata?['purchasePricePerShare'] ?? tx.amount).toDouble(),
-              currentPrice: (tx.metadata?['currentPrice'] ?? tx.amount).toDouble(),
-              purchaseDate: tx.createdAt,
-              notes: tx.metadata?['notes'],
-              createdAt: tx.createdAt,
-            ))
-        .toList();
+    // 1. Filter relevant transactions
+    final investmentTxs = transactions.where((tx) =>
+        tx.type == 'Investment' ||
+        tx.type == 'Investment Purchase' ||
+        tx.type == 'Investment Sale').toList();
+
+    // 2. Sort chronologically (oldest first)
+    investmentTxs.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+
+    // 3. Portfolio map keyed by symbol
+    final Map<String, Investment> portfolio = {};
+
+    for (final tx in investmentTxs) {
+      final isBuy = tx.type == 'Investment' || tx.type == 'Investment Purchase';
+      final symbol = tx.metadata?['symbol'] ?? tx.title;
+      final txQuantity = (tx.metadata?['quantity'] ?? 1.0).toDouble();
+      final txAmount = tx.amount;
+      final currentPrice = (tx.metadata?['currentPrice'] ?? (txAmount / (txQuantity > 0 ? txQuantity : 1))).toDouble();
+
+
+
+      if (isBuy) {
+        if (!portfolio.containsKey(symbol)) {
+          final purchasePricePerShare = (tx.metadata?['purchasePricePerShare'] ?? (txAmount / (txQuantity > 0 ? txQuantity : 1))).toDouble();
+          portfolio[symbol] = Investment(
+            id: symbol, // using symbol as unique ID since it aggregates many transactions
+            platform: tx.metadata?['platform'] ?? tx.category ?? 'Other',
+            investmentType: tx.metadata?['investmentType'] ?? 'Other',
+            assetName: tx.metadata?['assetName'] ?? tx.title, // use assetName if available, else title
+            symbol: symbol,
+            investedAmount: txAmount,
+            quantity: txQuantity,
+            purchasePricePerShare: purchasePricePerShare,
+            currentPrice: currentPrice,
+            purchaseDate: tx.createdAt,
+            notes: tx.metadata?['notes'],
+            createdAt: tx.createdAt,
+          );
+        } else {
+          final oldInv = portfolio[symbol]!;
+          final newQuantity = oldInv.quantity + txQuantity;
+          final newInvestedAmount = oldInv.investedAmount + txAmount;
+          final newAvgCost = newQuantity > 0 ? newInvestedAmount / newQuantity : 0.0;
+          
+          portfolio[symbol] = oldInv.copyWith(
+            quantity: newQuantity,
+            investedAmount: newInvestedAmount,
+            purchasePricePerShare: newAvgCost,
+            currentPrice: currentPrice,
+          );
+        }
+      } else {
+        // SELL
+        if (portfolio.containsKey(symbol)) {
+          final oldInv = portfolio[symbol]!;
+          final newQuantity = oldInv.quantity - txQuantity;
+          
+          if (newQuantity <= 0.0001) {
+            // Full sell
+            portfolio[symbol] = oldInv.copyWith(
+              quantity: 0.0,
+              investedAmount: 0.0,
+              currentPrice: currentPrice,
+            );
+          } else {
+            // Partial sell - reduce invested amount via average cost basis
+            final sellRatio = txQuantity / oldInv.quantity;
+            final newInvestedAmount = oldInv.investedAmount - (oldInv.investedAmount * sellRatio);
+            
+            portfolio[symbol] = oldInv.copyWith(
+              quantity: newQuantity,
+              investedAmount: newInvestedAmount,
+              // Keep average purchase price unchanged
+              currentPrice: currentPrice,
+            );
+          }
+        }
+      }
+    }
+
+    // 4. Return only active holdings (quantity > 0)
+    final holdings = portfolio.values.where((inv) => inv.quantity > 0.0001).toList();
+    
+    // Sort by largest value first
+    holdings.sort((a, b) => b.currentValue.compareTo(a.currentValue));
+    
+    return holdings;
   });
 });
 
