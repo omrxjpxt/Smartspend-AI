@@ -120,18 +120,13 @@ class _ExpensesHistoryScreenState extends ConsumerState<ExpensesHistoryScreen> {
                 ),
               ),
               const SizedBox(height: AppSpacing.xxl),
-              Material(
-                color: Colors.transparent,
-                borderRadius: BorderRadius.circular(12),
-                child: ListTile(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  leading: const Icon(Icons.delete_outline, color: AppColors.negative),
-                  title: const Text('Delete Expense', style: TextStyle(color: AppColors.negative, fontWeight: FontWeight.bold)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _deleteExpense(expense);
-                  },
-                ),
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: AppColors.negative),
+                title: const Text('Delete Expense', style: TextStyle(color: AppColors.negative, fontWeight: FontWeight.bold)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _deleteExpense(expense);
+                },
               ),
               const SizedBox(height: AppSpacing.xl),
             ],
