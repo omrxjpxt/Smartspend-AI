@@ -93,10 +93,14 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen>
       _errorMessage = null;
     });
 
+    debugPrint('DEBUG: Sending password reset to: $email');
+
     try {
       await ref
           .read(authRepositoryProvider)
           .sendPasswordResetEmail(email);
+          
+      debugPrint('DEBUG: Password reset email sent successfully.');
 
       if (mounted) {
         setState(() {
@@ -106,13 +110,16 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen>
         _successAnimController.forward();
       }
     } on FirebaseAuthException catch (e) {
+      debugPrint('DEBUG: FirebaseAuthException: Code: ${e.code}, Message: ${e.message}');
       if (mounted) {
         setState(() {
           _isLoading = false;
           _errorMessage = _mapFirebaseError(e);
         });
       }
-    } catch (_) {
+    } catch (e, stack) {
+      debugPrint('DEBUG: Unknown Exception: $e');
+      debugPrint('DEBUG: Stacktrace: $stack');
       if (mounted) {
         setState(() {
           _isLoading = false;
